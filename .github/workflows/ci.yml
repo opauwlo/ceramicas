@@ -52,10 +52,31 @@ jobs:
         with:
           path: dist
 
+  pages:
+    name: Conferir se o GitHub Pages está ligado
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: read
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/${{ github.repository }}/pages" > /dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=GitHub Pages desligado::Para publicar o site, vá em Settings > Pages e escolha Source: GitHub Actions. Depois rode este workflow de novo."
+          fi
+
   deploy:
     name: Publicar no GitHub Pages
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: build
+    if: needs.pages.outputs.enabled == 'true'
+    needs: [build, pages]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

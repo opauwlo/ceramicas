@@ -32,6 +32,8 @@ Feito com React, React Three Fiber, three.js, Zustand e Vite.
 
 Cada push roda tipos, testes e build no GitHub Actions. Quando o push é no `main` e tudo passa, o site é publicado no GitHub Pages.
 
+Para ligar a publicação uma vez: **Settings → Pages → Build and deployment → Source: GitHub Actions**. Depois, em **Actions**, rode de novo o último workflow do `main` (ou faça qualquer push).
+
 ## Estrutura
 
 - `src/model`: tipos, catálogo de peças, validação de modelos e modelos prontos
