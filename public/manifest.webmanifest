@@ -1,0 +1,14 @@
+{
+  "name": "Ateliê de Argila",
+  "short_name": "Ateliê",
+  "description": "Monte peças de argila em 3D antes de modelar de verdade.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF0EB",
+  "theme_color": "#FAFBF8",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
