@@ -66,6 +66,11 @@ export const Icon = {
       <path d="M4 20h16" />
     </Svg>
   ),
+  close: () => (
+    <Svg>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </Svg>
+  ),
   chevron: () => (
     <Svg>
       <path d="m6 15 6-6 6 6" />
@@ -106,6 +111,21 @@ export const Icon = {
       <path d="M3 18.5h18" />
       <path d="M8 4.5v5M5.5 7h5" />
       <path d="M16.5 9v3.4M14.8 10.7h3.4" />
+    </Svg>
+  ),
+  /** Pincel com a ponta molhada. */
+  brush: () => (
+    <Svg>
+      <path d="M18.6 3.4a2 2 0 0 1 2.9 2.9l-8.9 8.9-2.9-2.9z" />
+      <path d="M9.3 13.1c-2.6-.2-4.4 1.4-4.6 3.8-.1 1.4-.8 2.3-2 2.8 1.2.6 2.6.8 3.9.7 3-.2 4.9-2.1 4.8-4.4" fill="currentColor" fillOpacity={0.25} />
+    </Svg>
+  ),
+  /** Duas metades iguais, uma de cada lado do espelho. */
+  mirror: () => (
+    <Svg>
+      <path d="M12 3v18" strokeDasharray="2.2 2.6" />
+      <path d="M9 6.5 3.5 17.5H9z" />
+      <path d="M15 6.5l5.5 11H15z" />
     </Svg>
   ),
   stretch: () => (

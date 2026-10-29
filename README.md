@@ -7,13 +7,15 @@ Monte peças de argila em 3D no navegador, antes de modelar de verdade. Feito pa
 ## Como usar
 
 - **Mãos (canto da mesa):** escolha o que o dedo faz ao tocar numa peça.
-  - **Mover:** arraste a peça na mesa. Com o ímã ligado (aba Cena), ela assenta em cima do que estiver embaixo.
+  - **Mover:** arraste a peça e ela gruda onde o dedo estiver: em cima de outra peça assenta, de lado gruda virada para fora. Com o ímã desligado (aba Cena), anda solta.
   - **Amassar:** arraste para baixo para achatar e para cima para esticar. O volume não muda, como na massa de verdade.
   - **Girar:** arraste para os lados, como no torno. Solte com embalo e ela continua girando.
   - **Alisar:** esfregue o dedo na peça para tirar o jeito torto e a textura.
+  - **Pintar:** escolha a cor na paleta e toque nas peças. Passando o dedo, pinta várias de uma vez.
 - **Com as mãos (aba Forma):** os mesmos amassar, esticar e alisar por botão.
 - **Girar a vista:** arraste o fundo com um dedo. Dois dedos aproximam e arrastam.
-- **Peças:** adiciona disco, bolinha, gota, cilindro, bloco, anel e cone. Com uma peça selecionada, a nova nasce em cima dela.
+- **Peças:** escolha disco, bolinha, gota, cilindro, bloco, anel ou cone e toque na mesa ou numa peça: a nova gruda ali. "Pôr direto" deixa no meio, ou em cima da peça selecionada.
+- **Espelhar:** com uma peça selecionada, cria o par do outro lado (esquerda e direita como se vê na tela), espelhado pelo meio da peça em que ela está grudada. Bom para asas, orelhas e antenas.
 - **Forma:** raio, espessura, borda arredondada, jeito feito à mão, posição, rotação e tamanho. Os botões − e + fazem ajuste fino.
 - **Pintura:** cor, acabamento (fosco, acetinado, verniz, metal, vidro) e, nos discos, ondas em relevo, anéis pintados, sulcos e rótulo.
 - **Cena:** fundo, luz, direção da luz e câmera.

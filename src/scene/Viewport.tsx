@@ -7,11 +7,13 @@ import { buildGeometry, geometryKey, pieceVolume } from '../geometry/shapes';
 import { round, wrapAngle } from '../lib/format';
 import { buzz } from '../lib/haptics';
 import { canSmooth, clampPress, press, smooth } from '../model/hands';
-import type { BgKey, LightKey, Piece } from '../model/types';
+import { SPEC } from '../model/spec';
+import type { BgKey, LightKey, Piece, PieceType, Vec3 } from '../model/types';
 import { useMetrics, useStore, type Tool } from '../state/store';
 import { anim, LIFT } from './anim';
 import { atRest, bridge, meshes, type FrameKind } from './bridge';
 import { BG, envTexture, groundTexture, LIGHTS } from './env';
+import { FLAT, stickRot } from './stick';
 
 const rad = THREE.MathUtils.degToRad;
 
@@ -285,6 +287,7 @@ function Controls() {
   }, [ctl, connected, gl, set, invalidate]);
 
   useEffect(() => {
+    bridge.camRight = () => new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
     bridge.frame = kind => {
       frameAll(kind, camera, ctl);
       invalidate();
@@ -293,6 +296,7 @@ function Controls() {
     return () => {
       cancelAnimationFrame(raf);
       bridge.frame = undefined;
+      bridge.camRight = undefined;
     };
   }, [camera, ctl, invalidate]);
 
@@ -348,6 +352,10 @@ interface Gesture {
   dist: number;
   /** [tempo, ângulo sem dar a volta] para medir a velocidade ao girar */
   samples: Array<[number, number]>;
+  /** peças já pintadas nesta passada do dedo */
+  painted: Set<string>;
+  /** onde a peça está grudada agora, ao mover ('' = mesa) */
+  on: string;
 }
 
 /** Velocidade de giro no fim do arraste, em graus por milissegundo. */
@@ -360,10 +368,14 @@ function spinSpeed(smp: Array<[number, number]>, now: number): number {
   return t1 > t0 ? (a1 - a0) / (t1 - t0) : 0;
 }
 
+const r3 = (v: THREE.Vector3): Vec3 => [round(v.x, 3), round(v.y, 3), round(v.z, 3)];
+
 /**
- * As mãos. Mover arrasta pela mesa (com o ímã, assenta em cima do que estiver embaixo).
- * Amassar: para baixo achata, para cima estica, sem perder massa. Girar: para os lados,
- * como no torno, e continua girando se soltar com força. Alisar: esfregar tira o jeito torto.
+ * As mãos. Mover leva a peça com o dedo e gruda onde ele estiver: em cima de outra peça ela
+ * assenta, de lado ela gruda virada para fora. Amassar: para baixo achata, para cima estica, sem
+ * perder massa. Girar: como no torno, e continua girando se soltar com força. Alisar: esfregar
+ * tira o jeito torto. Pintar: tocar ou passar o dedo pinta com a cor do pincel.
+ * Com uma peça escolhida para grudar, um toque na mesa ou numa peça põe ela ali.
  */
 function HandController() {
   const camera = useThree(s => s.camera);
@@ -374,23 +386,75 @@ function HandController() {
     const ray = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const table = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const hit = new THREE.Vector3();
-    const from = new THREE.Vector3();
-    const DOWN = new THREE.Vector3(0, -1, 0);
     let g: Gesture | null = null;
     let spin: { id: string; v: number; rot: number; last: number; turned: number; raf: number } | null = null;
 
-    const topBelow = (x: number, z: number, skip: string) =>
+    const aim = (cx: number, cy: number) => {
+      const r = gl.domElement.getBoundingClientRect();
+      ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+    };
+
+    /** A peça sob o dedo (menos `skip`), com o ponto tocado e a direção "para fora" da superfície. */
+    const pick = (cx: number, cy: number, skip?: string) =>
       atRest(() => {
-        from.set(x, 200, z);
-        ray.set(from, DOWN);
+        aim(cx, cy);
         const targets: THREE.Object3D[] = [];
+        const ids = new Map<THREE.Object3D, string>();
         meshes.forEach((m, mid) => {
-          if (mid !== skip && m.visible) targets.push(m);
+          if (mid === skip || !m.visible) return;
+          m.updateMatrixWorld(true);
+          targets.push(m);
+          ids.set(m, mid);
         });
-        const hits = ray.intersectObjects(targets, false);
-        return hits.length ? hits[0].point.y : 0;
+        const h = ray.intersectObjects(targets, false)[0];
+        if (!h || !h.face) return null;
+        const n = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+        // face vista por dentro: vira para o lado de quem olha
+        if (n.dot(ray.ray.direction) > 0) n.negate();
+        return { id: ids.get(h.object) ?? '', point: h.point.clone(), n };
       });
+
+    /** Ponto da mesa sob o dedo. */
+    const onTable = (cx: number, cy: number) => {
+      aim(cx, cy);
+      return ray.ray.intersectPlane(table, new THREE.Vector3());
+    };
+
+    const paint = (id: string) => {
+      const s = useStore.getState();
+      const pc = s.doc.pieces.find(p => p.id === id);
+      if (!pc) return;
+      if (pc.color !== s.brush) {
+        s.patchPiece(id, p => {
+          p.color = s.brush;
+        });
+      }
+      anim.play(id, 'boop', { amp: 0.5 });
+      buzz(5);
+    };
+
+    /** Põe a peça escolhida onde o dedo tocou: em cima assenta, de lado gruda virada para fora. */
+    const place = (type: PieceType, cx: number, cy: number) => {
+      const h = pick(cx, cy);
+      let pos: Vec3;
+      let rot: Vec3 = [0, 0, 0];
+      if (h) {
+        pos = r3(h.point);
+        if (h.n.y < FLAT) rot = stickRot([0, 0, 0], h.n);
+      } else {
+        const p = onTable(cx, cy);
+        if (!p) return;
+        pos = [round(p.x, 3), 0, round(p.z, 3)];
+      }
+      const s = useStore.getState();
+      s.addPiece(type, pos, rot);
+      s.setPlacing(null);
+      s.notify(`Plop! ${SPEC[type].label} ${h ? 'grudou' : 'na mesa'}.`);
+      buzz(10);
+    };
 
     const stopSpin = () => {
       if (!spin) return;
@@ -441,6 +505,14 @@ function HandController() {
       g.lx = ev.clientX;
       g.ly = ev.clientY;
       const s = useStore.getState();
+      if (g.tool === 'pintar') {
+        const h = pick(ev.clientX, ev.clientY);
+        if (h && h.id && !g.painted.has(h.id)) {
+          g.painted.add(h.id);
+          paint(h.id);
+        }
+        return;
+      }
       if (!g.moved) {
         if (Math.hypot(ev.clientX - g.sx, ev.clientY - g.sy) < SLOP) return;
         g.moved = true;
@@ -451,14 +523,37 @@ function HandController() {
       const id = g.id;
       switch (g.tool) {
         case 'mover': {
-          const r = gl.domElement.getBoundingClientRect();
-          ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
-          ray.setFromCamera(ndc, camera);
-          if (!ray.ray.intersectPlane(plane, hit)) return;
-          const x = hit.x - g.offX;
-          const z = hit.z - g.offZ;
-          const y = s.snap ? topBelow(x, z, id) + g.bottom : g.base.pos[1];
-          s.movePiece(id, [round(x, 3), round(y, 3), round(z, 3)]);
+          if (!s.snap) {
+            // ímã desligado: anda solta na altura em que estava
+            aim(ev.clientX, ev.clientY);
+            if (!ray.ray.intersectPlane(plane, hit)) return;
+            s.movePiece(id, [round(hit.x - g.offX, 3), g.base.pos[1], round(hit.z - g.offZ, 3)]);
+            break;
+          }
+          const h = pick(ev.clientX, ev.clientY, id);
+          let pos: Vec3;
+          let rot = g.base.rot;
+          if (h && h.n.y < FLAT) {
+            // lateral de outra peça: gruda ali, virada para fora
+            pos = r3(h.point);
+            rot = stickRot(g.base.rot, h.n);
+          } else if (h) {
+            // em cima de outra peça: assenta
+            pos = [round(h.point.x, 3), round(h.point.y + g.bottom, 3), round(h.point.z, 3)];
+          } else {
+            const p = onTable(ev.clientX, ev.clientY);
+            if (!p) return;
+            pos = [round(p.x, 3), round(g.bottom, 3), round(p.z, 3)];
+          }
+          const on = h ? h.id : '';
+          if (on !== g.on) {
+            g.on = on;
+            buzz(5);
+          }
+          s.patchPiece(id, pc => {
+            pc.pos = pos;
+            pc.rot = [rot[0], rot[1], rot[2]];
+          });
           break;
         }
         case 'amassar': {
@@ -521,6 +616,10 @@ function HandController() {
       window.removeEventListener('pointercancel', end);
       if (controls) controls.enabled = true;
       const s = useStore.getState();
+      if (cur.tool === 'pintar') {
+        s.commit();
+        return;
+      }
       if (!cur.moved) {
         // um toque só: a peça dá um pulinho e as ferramentas dela abrem
         anim.play(cur.id, 'boop', { amp: 0.7 });
@@ -552,13 +651,14 @@ function HandController() {
     };
 
     drag.start = (id, e) => {
-      if (g) return;
+      const s = useStore.getState();
+      // esperando um toque para grudar peça nova: quem cuida é o toque na mesa
+      if (g || s.placing) return;
       stopSpin();
       const mesh = meshes.get(id);
-      const s = useStore.getState();
       const pc = s.doc.pieces.find(p => p.id === id);
       if (!mesh || !pc) return;
-      s.select(id);
+      if (s.tool !== 'pintar') s.select(id);
       if (controls) controls.enabled = false;
       if (s.tool === 'alisar' && !canSmooth(pc)) s.notify('Essa peça já está lisinha.');
       const box = atRest(() => {
@@ -582,16 +682,38 @@ function HandController() {
         tick: s.tool === 'girar' ? Math.floor(pc.rot[1] / 30) : 0,
         dist: 0,
         samples: [],
+        painted: new Set([id]),
+        on: '',
       };
+      if (s.tool === 'pintar') paint(id);
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', end);
       window.addEventListener('pointercancel', end);
     };
 
+    // toque curto na mesa com uma peça escolhida: gruda ali. Arrastar continua girando a vista.
+    let tap: { x: number; y: number; t: number; pid: number } | null = null;
+    const el = gl.domElement;
+    const onTapDown = (ev: PointerEvent) => {
+      tap = useStore.getState().placing ? { x: ev.clientX, y: ev.clientY, t: performance.now(), pid: ev.pointerId } : null;
+    };
+    const onTapUp = (ev: PointerEvent) => {
+      const t = tap;
+      tap = null;
+      const type = useStore.getState().placing;
+      if (!type || !t || ev.pointerId !== t.pid) return;
+      if (Math.hypot(ev.clientX - t.x, ev.clientY - t.y) > 8 || performance.now() - t.t > 700) return;
+      place(type, ev.clientX, ev.clientY);
+    };
+    el.addEventListener('pointerdown', onTapDown);
+    el.addEventListener('pointerup', onTapUp);
+
     return () => {
       drag.start = null;
       if (spin) cancelAnimationFrame(spin.raf);
       spin = null;
+      el.removeEventListener('pointerdown', onTapDown);
+      el.removeEventListener('pointerup', onTapUp);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);

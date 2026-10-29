@@ -1,11 +1,12 @@
 import { create } from 'zustand';
+import { mirrorPose, type MirrorAxis } from '../model/mirror';
 import { cloneDoc, newPiece, SPEC } from '../model/spec';
 import type { Doc, Piece, PieceType, Vec3 } from '../model/types';
 
 export type Tab = 'pecas' | 'forma' | 'pintura' | 'cena' | 'arquivo';
 export type PanelSize = 'min' | 'mid' | 'max';
 /** O que o dedo faz ao tocar numa peça na mesa. */
-export type Tool = 'mover' | 'amassar' | 'girar' | 'alisar';
+export type Tool = 'mover' | 'amassar' | 'girar' | 'alisar' | 'pintar';
 
 export interface Toast {
   id: number;
@@ -22,6 +23,10 @@ export interface State {
   tab: Tab;
   panel: PanelSize;
   tool: Tool;
+  /** cor do pincel da mão Pintar */
+  brush: string;
+  /** peça escolhida esperando um toque na mesa para grudar */
+  placing: PieceType | null;
   snap: boolean;
   dragging: boolean;
   toast: Toast | null;
@@ -31,6 +36,9 @@ export interface State {
   setTab(tab: Tab): void;
   cyclePanel(): void;
   setTool(tool: Tool): void;
+  setBrush(color: string): void;
+  setPlacing(type: PieceType | null): void;
+  setPanel(size: PanelSize): void;
   select(id: string | null): void;
   patchPiece(id: string, fn: (p: Piece) => void): void;
   movePiece(id: string, pos: Vec3): void;
@@ -41,8 +49,10 @@ export interface State {
   commit(): void;
   /** grava daqui a pouco; usado em campos de texto e de cor */
   commitSoon(): void;
-  addPiece(type: PieceType, at?: Vec3): string;
+  addPiece(type: PieceType, at?: Vec3, rot?: Vec3): string;
   duplicate(id: string): void;
+  /** cria o par da peça do outro lado do espelho e devolve o id dele */
+  mirror(id: string, axis: MirrorAxis, c: number): string | null;
   remove(id: string): void;
   toggleVisible(id: string): void;
   loadDoc(doc: Doc): void;
@@ -69,6 +79,8 @@ export const useStore = create<State>()((set, get) => ({
   tab: 'pecas',
   panel: 'mid',
   tool: 'mover',
+  brush: '#c9654a',
+  placing: null,
   snap: true,
   dragging: false,
   toast: null,
@@ -81,6 +93,12 @@ export const useStore = create<State>()((set, get) => ({
   cyclePanel: () => set(s => ({ panel: s.panel === 'mid' ? 'max' : s.panel === 'max' ? 'min' : 'mid' })),
 
   setTool: tool => set({ tool }),
+
+  setBrush: brush => set({ brush }),
+
+  setPlacing: placing => set({ placing }),
+
+  setPanel: panel => set({ panel }),
 
   select: id => set(s => ({ selectedId: keepSel(s.doc, id) })),
 
@@ -118,10 +136,10 @@ export const useStore = create<State>()((set, get) => ({
     soon = setTimeout(() => get().commit(), 500);
   },
 
-  addPiece: (type, at) => {
+  addPiece: (type, at, rot) => {
     const s = get();
     const n = s.doc.pieces.filter(p => p.type === type).length + 1;
-    const pc = newPiece(type, { name: SPEC[type].label + (n > 1 ? ` ${n}` : ''), pos: at ?? [0, 0, 0] });
+    const pc = newPiece(type, { name: SPEC[type].label + (n > 1 ? ` ${n}` : ''), pos: at ?? [0, 0, 0], rot: rot ?? [0, 0, 0] });
     set({ doc: { ...s.doc, pieces: [...s.doc.pieces, pc] }, selectedId: pc.id });
     get().commit();
     return pc.id;
@@ -134,6 +152,17 @@ export const useStore = create<State>()((set, get) => ({
     const pc = newPiece(src.type, { ...structuredClone(src), id: undefined, name: `${src.name} (cópia)`.slice(0, 40), pos: [src.pos[0] + 0.6, src.pos[1], src.pos[2]] });
     set({ doc: { ...s.doc, pieces: [...s.doc.pieces, pc] }, selectedId: pc.id });
     get().commit();
+  },
+
+  mirror: (id, axis, c) => {
+    const s = get();
+    const src = s.doc.pieces.find(p => p.id === id);
+    if (!src) return null;
+    const m = mirrorPose(src.pos, src.rot, axis, c);
+    const pc = newPiece(src.type, { ...structuredClone(src), id: undefined, name: `${src.name} (par)`.slice(0, 40), pos: m.pos, rot: m.rot });
+    set({ doc: { ...s.doc, pieces: [...s.doc.pieces, pc] }, selectedId: pc.id });
+    get().commit();
+    return pc.id;
   },
 
   remove: id => {

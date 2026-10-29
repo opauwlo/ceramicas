@@ -17,6 +17,8 @@ export const bridge: {
   frame?: (kind: FrameKind) => void;
   photo?: () => string | null;
   helper?: THREE.Object3D;
+  /** direção "para a direita" de quem olha a tela */
+  camRight?: () => THREE.Vector3;
 } = {};
 
 /**
@@ -47,6 +49,30 @@ export function worldBox(id: string): THREE.Box3 | null {
     const b = new THREE.Box3().setFromObject(m, true);
     return b.isEmpty() ? null : b;
   });
+}
+
+/**
+ * Meio (no eixo `k`) da peça em que esta está grudada: a maior que encosta nela.
+ * Sem nenhuma encostando, o meio da mesa.
+ */
+export function hostCenter(id: string, k: 0 | 2): number {
+  const me = worldBox(id);
+  if (!me) return 0;
+  me.expandByScalar(0.05);
+  let best = -1;
+  let c = 0;
+  for (const mid of meshes.keys()) {
+    if (mid === id) continue;
+    const b = worldBox(mid);
+    if (!b || !b.intersectsBox(me)) continue;
+    const s = b.getSize(new THREE.Vector3());
+    const vol = s.x * s.y * s.z;
+    if (vol > best) {
+      best = vol;
+      c = (b.min.getComponent(k) + b.max.getComponent(k)) / 2;
+    }
+  }
+  return Math.round(c * 1000) / 1000;
 }
 
 /** Ponto em cima do centro da peça, para a próxima peça nascer apoiada nela. */

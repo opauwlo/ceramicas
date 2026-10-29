@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Viewport } from './scene/Viewport';
 import { useStore } from './state/store';
-import { InfoChips, PhotoDialog, QuickBar, ToastView, ToolBelt, TopBar } from './ui/Overlay';
+import { InfoChips, PaintBar, PhotoDialog, PlaceBanner, QuickBar, ToastView, ToolBelt, TopBar } from './ui/Overlay';
 import { Panel } from './ui/Panel';
 
 function useShortcuts() {
@@ -10,6 +10,7 @@ function useShortcuts() {
       const s = useStore.getState();
       if (e.key === 'Escape') {
         if (s.photo) s.setPhoto(null);
+        else if (s.placing) s.setPlacing(null);
         else s.select(null);
         return;
       }
@@ -44,6 +45,8 @@ export default function App() {
         <ToolBelt />
         <QuickBar />
         <InfoChips />
+        <PaintBar />
+        <PlaceBanner />
         <ToastView />
       </main>
       <Panel />
