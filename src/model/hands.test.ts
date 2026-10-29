@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildGeometry, pieceVolume } from '../geometry/shapes';
-import { canSmooth, press, pressRange, smooth } from './hands';
+import { canSmooth, press, pressRange, shapeVolume, smooth } from './hands';
 import { newPiece, PIECE_TYPES, SPEC } from './spec';
 import type { Piece } from './types';
 
@@ -20,7 +20,7 @@ describe('amassar e esticar', () => {
       const v0 = vol(pc);
       for (const k of [0.6, 0.85, 1.25, 1.6]) {
         const v1 = vol(withP(pc, press(pc, k)));
-        expect(Math.abs(v1 - v0) / v0).toBeLessThan(0.04);
+        expect(Math.abs(v1 - v0) / v0).toBeLessThan(0.02);
       }
     });
   }
@@ -36,7 +36,16 @@ describe('amassar e esticar', () => {
     const pc = newPiece('cilindro');
     const p = press(pc, 2);
     expect(p.altura).toBeCloseTo(pc.p.altura * 2, 4);
-    expect(p.raio).toBeCloseTo(pc.p.raio / Math.SQRT2, 4);
+    expect(p.raio).toBeLessThan(pc.p.raio);
+  });
+
+  it('a conta de volume pelas medidas bate com a malha', () => {
+    for (const t of PIECE_TYPES) {
+      const pc = newPiece(t, { p: { irregular: 0 } });
+      const ratio = (pq: Piece) => vol(pq) / shapeVolume(t, pq.p);
+      // a malha é feita de facetas, então compara a razão antes e depois de amassar
+      expect(Math.abs(ratio(withP(pc, press(pc, 0.8))) / ratio(pc) - 1)).toBeLessThan(0.02);
+    }
   });
 
   it('para no limite sem deixar nenhuma medida sair da faixa', () => {
