@@ -14,7 +14,7 @@ export function PiecesTab() {
   const add = (t: PieceType) => {
     const s = useStore.getState();
     s.addPiece(t, topOf(s.selectedId));
-    s.notify(`${SPEC[t].label} na mesa`);
+    s.notify(`Plop! ${SPEC[t].label} na mesa.`);
   };
 
   return (
@@ -23,7 +23,7 @@ export function PiecesTab() {
         <div className="addgrid">
           {PIECE_TYPES.map(t => (
             <button key={t} type="button" className="add" onClick={() => add(t)}>
-              <ShapeIcon type={t} />
+              <ShapeIcon type={t} fill={SPEC[t].color} face />
               <span>{SPEC[t].label}</span>
             </button>
           ))}

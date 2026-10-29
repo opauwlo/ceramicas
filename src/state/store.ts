@@ -4,6 +4,8 @@ import type { Doc, Piece, PieceType, Vec3 } from '../model/types';
 
 export type Tab = 'pecas' | 'forma' | 'pintura' | 'cena' | 'arquivo';
 export type PanelSize = 'min' | 'mid' | 'max';
+/** O que o dedo faz ao tocar numa peça na mesa. */
+export type Tool = 'mover' | 'amassar' | 'girar' | 'alisar';
 
 export interface Toast {
   id: number;
@@ -19,6 +21,7 @@ export interface State {
   selectedId: string | null;
   tab: Tab;
   panel: PanelSize;
+  tool: Tool;
   snap: boolean;
   dragging: boolean;
   toast: Toast | null;
@@ -27,6 +30,7 @@ export interface State {
   init(doc: Doc): void;
   setTab(tab: Tab): void;
   cyclePanel(): void;
+  setTool(tool: Tool): void;
   select(id: string | null): void;
   patchPiece(id: string, fn: (p: Piece) => void): void;
   movePiece(id: string, pos: Vec3): void;
@@ -64,6 +68,7 @@ export const useStore = create<State>()((set, get) => ({
   selectedId: null,
   tab: 'pecas',
   panel: 'mid',
+  tool: 'mover',
   snap: true,
   dragging: false,
   toast: null,
@@ -74,6 +79,8 @@ export const useStore = create<State>()((set, get) => ({
   setTab: tab => set({ tab }),
 
   cyclePanel: () => set(s => ({ panel: s.panel === 'mid' ? 'max' : s.panel === 'max' ? 'min' : 'mid' })),
+
+  setTool: tool => set({ tool }),
 
   select: id => set(s => ({ selectedId: keepSel(s.doc, id) })),
 

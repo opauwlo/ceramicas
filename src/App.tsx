@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Viewport } from './scene/Viewport';
 import { useStore } from './state/store';
-import { InfoChips, PhotoDialog, QuickBar, ToastView, TopBar } from './ui/Overlay';
+import { InfoChips, PhotoDialog, QuickBar, ToastView, ToolBelt, TopBar } from './ui/Overlay';
 import { Panel } from './ui/Panel';
 
 function useShortcuts() {
@@ -41,6 +41,7 @@ export default function App() {
       <TopBar />
       <main className="view">
         <Viewport />
+        <ToolBelt />
         <QuickBar />
         <InfoChips />
         <ToastView />

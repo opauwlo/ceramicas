@@ -4,10 +4,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { buildMaterial, disposeMaterial, materialKey } from '../geometry/material';
 import { buildGeometry, geometryKey, pieceVolume } from '../geometry/shapes';
-import { round } from '../lib/format';
+import { round, wrapAngle } from '../lib/format';
+import { buzz } from '../lib/haptics';
+import { canSmooth, clampPress, press, smooth } from '../model/hands';
 import type { BgKey, LightKey, Piece } from '../model/types';
-import { useMetrics, useStore } from '../state/store';
-import { bridge, meshes, type FrameKind } from './bridge';
+import { useMetrics, useStore, type Tool } from '../state/store';
+import { anim, LIFT } from './anim';
+import { atRest, bridge, meshes, type FrameKind } from './bridge';
 import { BG, envTexture, groundTexture, LIGHTS } from './env';
 
 const rad = THREE.MathUtils.degToRad;
@@ -23,7 +26,7 @@ export function Viewport() {
       gl={{ antialias: true }}
       camera={{ fov: 35, near: 0.05, far: 300, position: [0.3, 9, 6] }}
       onPointerMissed={() => select(null)}
-      aria-label="Mesa 3D. Arraste uma peça para mover, arraste o fundo para girar a vista."
+      aria-label="Mesa 3D. Toque numa peça e arraste para mover, amassar, girar ou alisar, conforme a mão escolhida. Arraste o fundo para girar a vista."
     >
       <SceneContents />
     </Canvas>
@@ -50,8 +53,9 @@ function SceneContents() {
       </group>
       <SelectionBox />
       <Controls />
-      <DragController />
+      <HandController />
       <PhotoBridge />
+      <AnimKick />
     </>
   );
 }
@@ -136,12 +140,37 @@ const PieceMesh = memo(function PieceMesh({ piece }: { piece: Piece }) {
     const m = ref.current;
     if (!m) return;
     meshes.set(id, m);
-    m.updateMatrixWorld(true);
     const precise = !useStore.getState().dragging;
-    const b = new THREE.Box3().setFromObject(m, precise);
-    const s = b.isEmpty() ? new THREE.Vector3() : b.getSize(new THREE.Vector3());
+    const s = atRest(() => {
+      m.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(m, precise);
+      return b.isEmpty() ? new THREE.Vector3() : b.getSize(new THREE.Vector3());
+    });
     put(id, { vol: vol * piece.scale ** 3, size: [s.x, s.y, s.z] });
   }, [id, piece.pos, piece.rot, piece.scale, geometry, vol, put]);
+
+  // quique, queda e "segurar no ar": mexe só no desenho, conservando o volume
+  const posed = useRef(false);
+  useFrame(state => {
+    const m = ref.current;
+    if (!m) return;
+    const pose = anim.pose(id);
+    if (!pose) {
+      if (posed.current) {
+        posed.current = false;
+        m.position.set(piece.pos[0], piece.pos[1], piece.pos[2]);
+        m.scale.setScalar(piece.scale);
+        state.invalidate();
+      }
+      return;
+    }
+    posed.current = true;
+    const k = pose.hidden ? 1e-4 : piece.scale;
+    const side = 1 / Math.sqrt(pose.sy);
+    m.position.set(piece.pos[0], piece.pos[1] + pose.dy, piece.pos[2]);
+    m.scale.set(k * side, k * pose.sy, k * side);
+    state.invalidate();
+  });
 
   useEffect(
     () => () => {
@@ -177,7 +206,7 @@ function SelectionBox() {
   const doc = useStore(s => s.doc);
   const invalidate = useThree(s => s.invalidate);
   const helper = useMemo(() => {
-    const h = new THREE.Box3Helper(new THREE.Box3(), new THREE.Color('#3b6cff'));
+    const h = new THREE.Box3Helper(new THREE.Box3(), new THREE.Color('#e0703f'));
     h.visible = false;
     return h;
   }, []);
@@ -201,11 +230,13 @@ function SelectionBox() {
 
 function frameAll(kind: FrameKind, camera: THREE.PerspectiveCamera, ctl: OrbitControls) {
   const box = new THREE.Box3();
-  meshes.forEach(m => {
-    if (!m.visible) return;
-    m.updateMatrixWorld(true);
-    box.expandByObject(m);
-  });
+  atRest(() =>
+    meshes.forEach(m => {
+      if (!m.visible) return;
+      m.updateMatrixWorld(true);
+      box.expandByObject(m);
+    }),
+  );
   if (box.isEmpty()) box.set(new THREE.Vector3(-2, 0, -2), new THREE.Vector3(2, 1, 2));
   const sph = box.getBoundingSphere(new THREE.Sphere());
   const v = rad(camera.fov) / 2;
@@ -273,10 +304,68 @@ function Controls() {
   return null;
 }
 
-/** Arrastar peças pela mesa. Com o ímã ligado, a peça assenta em cima do que estiver embaixo dela. */
+/** Faz as peças caírem na mesa quando ela aparece, e liga as animações ao quadro da cena. */
+function AnimKick() {
+  const invalidate = useThree(s => s.invalidate);
+  useEffect(() => {
+    anim.onKick(() => invalidate());
+    const pieces = useStore.getState().doc.pieces.filter(p => p.visible);
+    anim.dropIn([...pieces].sort((a, b) => a.pos[1] - b.pos[1]).map(p => p.id));
+    return () => anim.onKick(null);
+  }, [invalidate]);
+  return null;
+}
+
+/** Começo de um toque numa peça. A cena chama aqui; o controle de mãos decide o que fazer. */
 export const drag: { start: ((id: string, e: ThreeEvent<PointerEvent>) => void) | null } = { start: null };
 
-function DragController() {
+/** Quanto o dedo precisa andar para virar um gesto (e não um toque). */
+const SLOP = 6;
+/** Pixels de arraste para a massa achatar ou esticar 2,7 vezes. */
+const PRESS_PX = 160;
+/** Graus por pixel ao girar. */
+const SPIN_DEG = 0.6;
+/** Pixels esfregando para alisar quase tudo. */
+const RUB_PX = 900;
+
+interface Gesture {
+  id: string;
+  pid: number;
+  tool: Tool;
+  sx: number;
+  sy: number;
+  lx: number;
+  ly: number;
+  moved: boolean;
+  /** a peça como estava no começo do gesto */
+  base: Piece;
+  offX: number;
+  offZ: number;
+  bottom: number;
+  /** degrau de vibração já tocado */
+  tick: number;
+  /** distância esfregada, no alisar */
+  dist: number;
+  /** [tempo, ângulo sem dar a volta] para medir a velocidade ao girar */
+  samples: Array<[number, number]>;
+}
+
+/** Velocidade de giro no fim do arraste, em graus por milissegundo. */
+function spinSpeed(smp: Array<[number, number]>, now: number): number {
+  if (smp.length < 2) return 0;
+  const [t1, a1] = smp[smp.length - 1];
+  // ficou parado antes de soltar: não sai girando
+  if (now - t1 > 80) return 0;
+  const [t0, a0] = smp[0];
+  return t1 > t0 ? (a1 - a0) / (t1 - t0) : 0;
+}
+
+/**
+ * As mãos. Mover arrasta pela mesa (com o ímã, assenta em cima do que estiver embaixo).
+ * Amassar: para baixo achata, para cima estica, sem perder massa. Girar: para os lados,
+ * como no torno, e continua girando se soltar com força. Alisar: esfregar tira o jeito torto.
+ */
+function HandController() {
   const camera = useThree(s => s.camera);
   const gl = useThree(s => s.gl);
   const controls = useThree(s => s.controls) as unknown as OrbitControls | null;
@@ -288,72 +377,211 @@ function DragController() {
     const hit = new THREE.Vector3();
     const from = new THREE.Vector3();
     const DOWN = new THREE.Vector3(0, -1, 0);
-    let st: null | { id: string; pid: number; offX: number; offZ: number; bottom: number; y: number; sx: number; sy: number; moved: boolean } = null;
+    let g: Gesture | null = null;
+    let spin: { id: string; v: number; rot: number; last: number; turned: number; raf: number } | null = null;
 
-    const topBelow = (x: number, z: number, skip: string) => {
-      from.set(x, 200, z);
-      ray.set(from, DOWN);
-      const targets: THREE.Object3D[] = [];
-      meshes.forEach((m, mid) => {
-        if (mid !== skip && m.visible) targets.push(m);
+    const topBelow = (x: number, z: number, skip: string) =>
+      atRest(() => {
+        from.set(x, 200, z);
+        ray.set(from, DOWN);
+        const targets: THREE.Object3D[] = [];
+        meshes.forEach((m, mid) => {
+          if (mid !== skip && m.visible) targets.push(m);
+        });
+        const hits = ray.intersectObjects(targets, false);
+        return hits.length ? hits[0].point.y : 0;
       });
-      const hits = ray.intersectObjects(targets, false);
-      return hits.length ? hits[0].point.y : 0;
+
+    const stopSpin = () => {
+      if (!spin) return;
+      cancelAnimationFrame(spin.raf);
+      const id = spin.id;
+      spin = null;
+      useStore.getState().commit();
+      anim.play(id, 'boop', { amp: 0.4 });
+    };
+
+    const startSpin = (id: string, v: number, rot: number) => {
+      const sp = { id, v, rot, last: performance.now(), turned: 0, raf: 0 };
+      spin = sp;
+      const step = (t: number) => {
+        if (spin !== sp) return;
+        const dt = Math.max(0, Math.min(48, t - sp.last));
+        sp.last = t;
+        const pc = useStore.getState().doc.pieces.find(p => p.id === id);
+        // alguém mexeu na peça no meio do giro (desfazer, controle deslizante): para aqui
+        if (!pc || Math.abs(pc.rot[1] - sp.rot) > 0.05) {
+          stopSpin();
+          return;
+        }
+        sp.v *= Math.exp(-dt / 520);
+        const d = sp.v * dt;
+        sp.rot = round(wrapAngle(sp.rot + d), 2);
+        sp.turned += Math.abs(d);
+        if (sp.turned >= 30) {
+          sp.turned -= 30;
+          buzz(4);
+        }
+        useStore.getState().patchPiece(id, p => {
+          p.rot[1] = sp.rot;
+        });
+        if (Math.abs(sp.v) < 0.012) {
+          stopSpin();
+          return;
+        }
+        sp.raf = requestAnimationFrame(step);
+      };
+      sp.raf = requestAnimationFrame(step);
     };
 
     const onMove = (ev: PointerEvent) => {
-      if (!st || ev.pointerId !== st.pid) return;
-      if (!st.moved) {
-        if (Math.hypot(ev.clientX - st.sx, ev.clientY - st.sy) < 6) return;
-        st.moved = true;
-        useStore.getState().setDragging(true);
-      }
-      const r = gl.domElement.getBoundingClientRect();
-      ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
-      ray.setFromCamera(ndc, camera);
-      if (!ray.ray.intersectPlane(plane, hit)) return;
-      const x = hit.x - st.offX;
-      const z = hit.z - st.offZ;
+      if (!g || ev.pointerId !== g.pid) return;
+      const ddx = ev.clientX - g.lx;
+      const ddy = ev.clientY - g.ly;
+      g.lx = ev.clientX;
+      g.ly = ev.clientY;
       const s = useStore.getState();
-      const y = s.snap ? topBelow(x, z, st.id) + st.bottom : st.y;
-      s.movePiece(st.id, [round(x, 3), round(y, 3), round(z, 3)]);
+      if (!g.moved) {
+        if (Math.hypot(ev.clientX - g.sx, ev.clientY - g.sy) < SLOP) return;
+        g.moved = true;
+        s.setDragging(true);
+        if (g.tool === 'mover') anim.play(g.id, 'lift');
+        else buzz(6);
+      }
+      const id = g.id;
+      switch (g.tool) {
+        case 'mover': {
+          const r = gl.domElement.getBoundingClientRect();
+          ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+          ray.setFromCamera(ndc, camera);
+          if (!ray.ray.intersectPlane(plane, hit)) return;
+          const x = hit.x - g.offX;
+          const z = hit.z - g.offZ;
+          const y = s.snap ? topBelow(x, z, id) + g.bottom : g.base.pos[1];
+          s.movePiece(id, [round(x, 3), round(y, 3), round(z, 3)]);
+          break;
+        }
+        case 'amassar': {
+          const k = clampPress(g.base, Math.exp(-(ev.clientY - g.sy) / PRESS_PX));
+          const tick = Math.round(Math.log(k) / 0.12);
+          if (tick !== g.tick) {
+            g.tick = tick;
+            buzz(4);
+          }
+          const p = press(g.base, k);
+          s.patchPiece(id, pc => {
+            pc.p = p;
+          });
+          break;
+        }
+        case 'girar': {
+          const now = performance.now();
+          const a = g.base.rot[1] + (ev.clientX - g.sx) * SPIN_DEG;
+          g.samples.push([now, a]);
+          while (g.samples.length > 2 && now - g.samples[0][0] > 100) g.samples.shift();
+          const tick = Math.floor(a / 30);
+          if (tick !== g.tick) {
+            g.tick = tick;
+            buzz(3);
+          }
+          const rot = round(wrapAngle(a), 2);
+          s.patchPiece(id, pc => {
+            pc.rot[1] = rot;
+          });
+          break;
+        }
+        case 'alisar': {
+          g.dist += Math.hypot(ddx, ddy);
+          const tick = Math.floor(g.dist / 140);
+          if (tick !== g.tick) {
+            g.tick = tick;
+            buzz(3);
+          }
+          const r = smooth(g.base, Math.exp(-g.dist / RUB_PX));
+          // degraus: a textura pintada do disco é refeita a cada mudança, então muda pouco de vez em quando
+          const clay = Math.round(r.clay * 20) / 20;
+          const irr = 'irregular' in r.p ? Math.round(r.p.irregular * 100) / 100 : null;
+          const cur = s.doc.pieces.find(p => p.id === id);
+          if (!cur || (cur.clay === clay && (irr === null || cur.p.irregular === irr))) break;
+          s.patchPiece(id, pc => {
+            pc.clay = clay;
+            if (irr !== null) pc.p.irregular = irr;
+          });
+          break;
+        }
+      }
     };
 
     const end = (ev: PointerEvent) => {
-      if (!st || ev.pointerId !== st.pid) return;
-      const moved = st.moved;
-      st = null;
+      if (!g || ev.pointerId !== g.pid) return;
+      const cur = g;
+      g = null;
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);
       if (controls) controls.enabled = true;
       const s = useStore.getState();
-      if (moved) {
-        s.setDragging(false);
-        s.commit();
-      } else if (s.tab === 'pecas') s.setTab('forma');
+      if (!cur.moved) {
+        // um toque só: a peça dá um pulinho e as ferramentas dela abrem
+        anim.play(cur.id, 'boop', { amp: 0.7 });
+        if (s.tab === 'pecas') s.setTab('forma');
+        return;
+      }
+      s.setDragging(false);
+      switch (cur.tool) {
+        case 'mover':
+          s.commit();
+          anim.play(cur.id, 'drop', { h: LIFT, amp: 0.55 });
+          buzz(8);
+          break;
+        case 'girar': {
+          const v = ev.type === 'pointerup' ? spinSpeed(cur.samples, performance.now()) : 0;
+          const pc = s.doc.pieces.find(p => p.id === cur.id);
+          if (pc && Math.abs(v) > 0.08) startSpin(cur.id, Math.max(-1.5, Math.min(1.5, v)), pc.rot[1]);
+          else {
+            s.commit();
+            anim.play(cur.id, 'boop', { amp: 0.4 });
+          }
+          break;
+        }
+        default:
+          s.commit();
+          anim.play(cur.id, 'boop', { amp: 0.6 });
+          buzz(6);
+      }
     };
 
     drag.start = (id, e) => {
-      if (st) return;
+      if (g) return;
+      stopSpin();
       const mesh = meshes.get(id);
-      const pc = useStore.getState().doc.pieces.find(p => p.id === id);
+      const s = useStore.getState();
+      const pc = s.doc.pieces.find(p => p.id === id);
       if (!mesh || !pc) return;
-      useStore.getState().select(id);
+      s.select(id);
       if (controls) controls.enabled = false;
-      mesh.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(mesh, true);
+      if (s.tool === 'alisar' && !canSmooth(pc)) s.notify('Essa peça já está lisinha.');
+      const box = atRest(() => {
+        mesh.updateMatrixWorld(true);
+        return new THREE.Box3().setFromObject(mesh, true);
+      });
       plane.set(new THREE.Vector3(0, 1, 0), -e.point.y);
-      st = {
+      g = {
         id,
         pid: e.pointerId,
+        tool: s.tool,
+        sx: e.nativeEvent.clientX,
+        sy: e.nativeEvent.clientY,
+        lx: e.nativeEvent.clientX,
+        ly: e.nativeEvent.clientY,
+        moved: false,
+        base: structuredClone(pc),
         offX: e.point.x - pc.pos[0],
         offZ: e.point.z - pc.pos[2],
         bottom: pc.pos[1] - box.min.y,
-        y: pc.pos[1],
-        sx: e.nativeEvent.clientX,
-        sy: e.nativeEvent.clientY,
-        moved: false,
+        tick: s.tool === 'girar' ? Math.floor(pc.rot[1] / 30) : 0,
+        dist: 0,
+        samples: [],
       };
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', end);
@@ -362,6 +590,8 @@ function DragController() {
 
     return () => {
       drag.start = null;
+      if (spin) cancelAnimationFrame(spin.raf);
+      spin = null;
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);

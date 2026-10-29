@@ -6,7 +6,12 @@ Monte peças de argila em 3D no navegador, antes de modelar de verdade. Feito pa
 
 ## Como usar
 
-- **Mover:** arraste a peça na mesa. Com o ímã ligado (aba Cena), ela assenta em cima do que estiver embaixo.
+- **Mãos (canto da mesa):** escolha o que o dedo faz ao tocar numa peça.
+  - **Mover:** arraste a peça na mesa. Com o ímã ligado (aba Cena), ela assenta em cima do que estiver embaixo.
+  - **Amassar:** arraste para baixo para achatar e para cima para esticar. O volume não muda, como na massa de verdade.
+  - **Girar:** arraste para os lados, como no torno. Solte com embalo e ela continua girando.
+  - **Alisar:** esfregue o dedo na peça para tirar o jeito torto e a textura.
+- **Com as mãos (aba Forma):** os mesmos amassar, esticar e alisar por botão.
 - **Girar a vista:** arraste o fundo com um dedo. Dois dedos aproximam e arrastam.
 - **Peças:** adiciona disco, bolinha, gota, cilindro, bloco, anel e cone. Com uma peça selecionada, a nova nasce em cima dela.
 - **Forma:** raio, espessura, borda arredondada, jeito feito à mão, posição, rotação e tamanho. Os botões − e + fazem ajuste fino.

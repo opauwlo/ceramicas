@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { dims, grams } from '../lib/format';
 import { DENSITY, isClay } from '../model/spec';
-import { useMetrics, useStore } from '../state/store';
+import { useMetrics, useStore, type Tool } from '../state/store';
 import { downloadPhoto, rotateSelected, sharePhoto, sitSelected, takePhoto } from './actions';
 import { Icon } from './icons';
 
@@ -44,6 +44,38 @@ export function TopBar() {
   );
 }
 
+const TOOLS: ReadonlyArray<readonly [Tool, string, ComponentType, string]> = [
+  ['mover', 'Mover', Icon.move, 'Mover: arraste a peça pela mesa.'],
+  ['amassar', 'Amassar', Icon.press, 'Amassar: arraste a peça para baixo para achatar, para cima para esticar. A massa não some, o volume fica igual.'],
+  ['girar', 'Girar', Icon.spin, 'Girar: arraste para os lados, como no torno. Solte com embalo e ela continua girando.'],
+  ['alisar', 'Alisar', Icon.smooth, 'Alisar: esfregue o dedo na peça, para lá e para cá.'],
+];
+
+/** As mãos: o que o dedo faz ao tocar numa peça. */
+export function ToolBelt() {
+  const tool = useStore(s => s.tool);
+  return (
+    <div className="tools" role="toolbar" aria-label="Mãos">
+      {TOOLS.map(([k, label, Ico, hint]) => (
+        <button
+          key={k}
+          type="button"
+          aria-pressed={tool === k}
+          title={hint}
+          onClick={() => {
+            const s = useStore.getState();
+            s.setTool(k);
+            s.notify(hint);
+          }}
+        >
+          <Ico />
+          <span>{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Atalhos que aparecem na mesa quando há uma peça selecionada. */
 export function QuickBar() {
   const piece = useStore(s => s.doc.pieces.find(p => p.id === s.selectedId));
@@ -52,7 +84,7 @@ export function QuickBar() {
     <div className="quick" role="toolbar" aria-label={`Ações para ${piece.name}`}>
       <button type="button" onClick={() => rotateSelected(15)}>
         <Icon.rotate />
-        Girar
+        +15°
       </button>
       <button type="button" onClick={sitSelected}>
         <Icon.down />
@@ -104,11 +136,12 @@ export function ToastView() {
   useEffect(() => {
     if (!toast) return;
     setVisible(true);
-    const t = setTimeout(() => setVisible(false), 2600);
+    // recado comprido fica mais tempo na tela
+    const t = setTimeout(() => setVisible(false), Math.max(2600, toast.msg.length * 60));
     return () => clearTimeout(t);
   }, [toast]);
   return (
-    <div className="toast" role="status" hidden={!visible || !toast}>
+    <div className="toast" role="status" key={toast?.id} hidden={!visible || !toast}>
       {toast?.msg}
     </div>
   );
