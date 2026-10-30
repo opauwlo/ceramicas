@@ -83,46 +83,50 @@ export function makeTurntableFoot(): THREE.Mesh {
   return foot;
 }
 
-/** Rolo de abrir massa, deitado no eixo x, com o barril num grupo próprio para rodar. */
-export function makeRoller(): { group: THREE.Group; barrel: THREE.Group; radius: number } {
+/**
+ * Rolo de abrir massa, deitado no eixo x, com o barril num grupo próprio para rodar.
+ * O comprimento acompanha a placa (`setLength`), para o rolo sempre passar por cima dos niveladores.
+ */
+export function makeRoller(): { group: THREE.Group; barrel: THREE.Group; radius: number; setLength(L: number): void } {
   const group = new THREE.Group();
   const barrel = new THREE.Group();
-  const r = 0.42;
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 7.2, 40), wood(0xe6c697));
+  const r = 0.3;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 40), wood(0xe6c697));
   body.rotation.z = Math.PI / 2;
   body.castShadow = true;
   barrel.add(body);
-  // veios da madeira: anéis finos para dar para ver o rolo girando
-  for (const x of [-2.6, -0.9, 0.9, 2.6]) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r + 0.003, 0.012, 6, 40), wood(0xc89a62));
-    ring.rotation.y = Math.PI / 2;
-    ring.position.x = x;
-    ring.rotation.z = Math.random();
-    barrel.add(ring);
-  }
-  const mark = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.02, 0.05), wood(0xc89a62));
+  // veio da madeira: uma faixa mais escura, para dar para ver o rolo girando
+  const mark = new THREE.Mesh(new THREE.BoxGeometry(1, 0.02, 0.05), wood(0xc89a62));
   mark.position.y = r;
   barrel.add(mark);
   barrel.position.y = r;
   group.add(barrel);
+  const handles: THREE.Mesh[] = [];
   for (const s of [-1, 1]) {
-    const h = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 1.4, 20), wood(0xb98552));
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.9, 16), wood(0xb98552));
     h.rotation.z = Math.PI / 2;
-    h.position.set(s * 4.3, r, 0);
+    h.position.set(s, r, 0);
     h.castShadow = true;
+    handles.push(h);
     group.add(h);
   }
+  const setLength = (L: number) => {
+    body.scale.y = L;
+    mark.scale.x = L * 0.94;
+    handles[0].position.x = -(L / 2 + 0.45);
+    handles[1].position.x = L / 2 + 0.45;
+  };
+  setLength(5);
   group.visible = false;
-  return { group, barrel, radius: r };
+  return { group, barrel, radius: r, setLength };
 }
 
-/** Par de niveladores (réguas de espessura), um de cada lado do rolo. */
-export function makeLevelers(): { group: THREE.Group; setThickness(mm: number): void } {
+/** Par de niveladores (réguas de espessura), um de cada lado da massa, ao longo de z. */
+export function makeLevelers(): { group: THREE.Group; set(mm: number, halfGap: number, length: number): void } {
   const group = new THREE.Group();
   const bars: THREE.Mesh[] = [];
-  for (const s of [-1, 1]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 7.4), plastic(0xbfe3f2, 0.8));
-    b.position.x = s * 3.3;
+  for (let i = 0; i < 2; i++) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1, 1), plastic(0xbfe3f2, 0.85));
     b.castShadow = true;
     bars.push(b);
     group.add(b);
@@ -130,14 +134,41 @@ export function makeLevelers(): { group: THREE.Group; setThickness(mm: number): 
   group.visible = false;
   return {
     group,
-    setThickness(mm: number) {
+    set(mm: number, halfGap: number, length: number) {
       const h = Math.max(0.01, mm / 10);
-      for (const b of bars) {
-        b.scale.y = h;
-        b.position.y = h / 2;
-      }
+      bars.forEach((b, i) => {
+        b.scale.set(1, h, length);
+        b.position.set((i ? 1 : -1) * (halfGap + 0.2), h / 2, 0);
+      });
     },
   };
+}
+
+/** Potinho de tinta: o pingo sai dele. `setColor` troca a cor da tinta. */
+export function makePaintPot(): { group: THREE.Group; setColor(hex: string): void } {
+  const group = new THREE.Group();
+  const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.3, 0.5, 24), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.1, transmission: 0.6, thickness: 0.1 }));
+  jar.position.y = 0.25;
+  jar.castShadow = true;
+  group.add(jar);
+  const ink = new THREE.MeshStandardMaterial({ color: 0xe0473c, roughness: 0.3 });
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.27, 0.32, 24), ink);
+  liquid.position.y = 0.18;
+  group.add(liquid);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.1, 24), plastic(0xf3efe8));
+  lid.position.set(0.45, 0.05, 0.1);
+  lid.rotation.z = 0.2;
+  group.add(lid);
+  group.visible = false;
+  return { group, setColor: (hex: string) => ink.color.set(hex) };
+}
+
+/** Pingo de tinta caindo. */
+export function makeDrop(): THREE.Mesh {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), new THREE.MeshStandardMaterial({ color: 0xe0473c, roughness: 0.2 }));
+  m.scale.set(1, 1.35, 1);
+  m.visible = false;
+  return m;
 }
 
 function handle(len: number, r: number, color: number): THREE.Mesh {

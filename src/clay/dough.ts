@@ -136,7 +136,6 @@ export class Dough {
     this.gloss = new Float32Array(this.n);
     const base = color.map(inkOf);
     for (let i = 0; i < this.n; i++) this.ink.set(base, i * 3);
-    this.paint();
     this.rn = new Float32Array(this.n * 3);
     this.pn = new Float32Array(this.n * 3);
     this.scratch = new Float32Array(this.n * 6);
@@ -147,6 +146,7 @@ export class Dough {
     this.vol0 = volume(this.rest, this.idx);
     normals(this.rest, this.idx, this.rn);
     normals(this.pos, this.idx, this.pn);
+    this.paint();
   }
 
   /** Volume da forma de verdade agora. */
@@ -804,13 +804,32 @@ export class Dough {
     }
   }
 
-  /** Atualiza a cor e o brilho que aparecem: pigmento, água (escurece) e verniz. */
+  /**
+   * Atualiza a cor e o brilho que aparecem: pigmento, água (escurece) e verniz.
+   * Fundo de vinco e de buraquinho escurece um pouco e quina viva clareia um tiquinho,
+   * como a luz faz na massa de verdade; assim as marcas aparecem mesmo pequenas.
+   */
   paint(): void {
     const ink = this.ink;
     const col = this.col;
+    const p = this.rest;
+    if (!this.cell) this.measure();
+    const edge = Math.sqrt(this.cell * 2.3);
     for (let i = 0; i < this.n; i++) {
+      let x = 0, y = 0, z = 0;
+      const a = this.off[i];
+      const b = this.off[i + 1];
+      for (let q = a; q < b; q++) {
+        const v = this.nbr[q] * 3;
+        x += p[v]; y += p[v + 1]; z += p[v + 2];
+      }
+      const m = b - a;
+      const i3 = i * 3;
+      // positivo: os vizinhos ficam "acima" do ponto (ele está num fundo)
+      const cav = ((x / m - p[i3]) * this.rn[i3] + (y / m - p[i3 + 1]) * this.rn[i3 + 1] + (z / m - p[i3 + 2]) * this.rn[i3 + 2]) / edge;
+      const shade = cav > 0 ? 1 - Math.min(0.42, cav * 0.75) : 1 + Math.min(0.06, -cav * 0.12);
       const w = this.wet[i];
-      const dark = 1 - 0.16 * w;
+      const dark = (1 - 0.16 * w) * shade;
       col[i * 3] = Math.exp(-ink[i * 3]) * dark;
       col[i * 3 + 1] = Math.exp(-ink[i * 3 + 1]) * dark;
       col[i * 3 + 2] = Math.exp(-ink[i * 3 + 2]) * dark;

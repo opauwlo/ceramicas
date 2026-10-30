@@ -626,8 +626,8 @@ input[type='color'] { width: 100%; height: 44px; padding: 3px; border: 1px solid
 .claybar-row { display: flex; align-items: center; gap: 6px; }
 .claybar-row .chip { margin-right: auto; box-shadow: none; }
 .btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-.btn.on svg { animation: spin-icon 1.2s linear infinite; }
-@keyframes spin-icon { to { transform: rotate(360deg); } }
+.btn.on svg { animation: spin-icon 0.45s ease-out; }
+@keyframes spin-icon { to { transform: rotate(90deg); } }
 
 /* opções da ferramenta escolhida */
 .opts {
@@ -692,18 +692,18 @@ input[type='color'] { width: 100%; height: 44px; padding: 3px; border: 1px solid
 .tool {
   display: grid;
   justify-items: center;
-  gap: 3px;
-  width: 66px;
-  padding: 8px 2px 7px;
+  gap: 2px;
+  width: 54px;
+  padding: 5px 2px 5px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--paper);
   color: var(--ink);
-  font: 700 11.5px/1.1 var(--f-body);
+  font: 700 10.5px/1.1 var(--f-body);
   box-shadow: var(--press);
   transition: transform 0.25s var(--spring), background-color 0.15s, border-color 0.15s;
 }
-.tool svg { width: 28px; height: 28px; }
+.tool svg { width: 22px; height: 22px; }
 .tool span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tool[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); box-shadow: 0 2px 0 rgba(92, 40, 15, 0.35); }
 .tool[aria-pressed='true'] svg { animation: wiggle 0.45s var(--spring); }

@@ -30,17 +30,17 @@ const BANCADA: ReadonlyArray<readonly [string, ReadonlyArray<readonly [ClayTool,
     'Modelar',
     [
       ['dedo', 'Dedo', 'Aperte, arraste e esfregue. Dois dedos na massa beliscam.'],
-      ['rolo', 'Rolo', 'Passe o rolo por cima, indo e voltando. Os niveladores seguram a espessura.'],
-      ['boleador', 'Boleador', 'Segure para fazer um buraquinho redondo; arraste para um sulco.'],
-      ['silicone', 'Silicone', 'Arraste para unir emendas e esfumar sem deixar marca.'],
+      ['rolo', 'Rolo', 'Toque para o rolo passar e abrir a massa. Segure para continuar rolando.'],
+      ['boleador', 'Boleador', 'Toque onde quer o buraquinho; arraste para um sulco. O ímã acerta o lugar.'],
+      ['silicone', 'Silicone', 'Arraste em cima da massa para unir emendas e esfumar.'],
     ],
   ],
   [
     'Cortar e marcar',
     [
-      ['espatula', 'Espátula', 'Risque uma linha atravessando a massa e solte para cortar reto.'],
-      ['esteca', 'Esteca', 'Risque para marcar um vinco. Com a bailarina girando, sai um círculo.'],
-      ['cortador', 'Cortador', 'Toque em cima da massa e solte: corta no formato. Melhor numa placa aberta com o rolo.'],
+      ['espatula', 'Espátula', 'Risque onde quer cortar e solte. O ímã endireita a linha.'],
+      ['esteca', 'Esteca', 'Risque na massa e solte. Quase reto vira reta; uma volta vira círculo.'],
+      ['cortador', 'Cortador', 'Toque na massa e solte para cortar. O ímã puxa para o meio.'],
     ],
   ],
   [
@@ -63,13 +63,12 @@ const BANCADA: ReadonlyArray<readonly [string, ReadonlyArray<readonly [ClayTool,
 const HINT = new Map(BANCADA.flatMap(([, ts]) => ts.map(([t, , h]) => [t, h] as const)));
 
 const DICAS: ReadonlyArray<readonly [string, string]> = [
-  ['Dedo', 'Aperte e segure: afunda e a massa estufa em volta. Arraste, esfregue, belisque com dois dedos.'],
-  ['Rolo e niveladores', 'Abra uma placa por igual: 3, 5 ou 8 mm, como nas réguas de verdade.'],
-  ['Cortar', 'Espátula corta reto; cortadores cortam no formato. O que sai vira sobra.'],
-  ['Marcar', 'Esteca risca vincos, boleador faz buraquinhos e sulcos redondos.'],
-  ['Acabamento', 'Pincel d’água e esponja alisam (e molham), lixa acerta bordas.'],
-  ['Cor', 'Pingue tinta e sove para tingir, ou pinte por cima. Verniz dá brilho.'],
-  ['Bailarina', 'Arraste fora da massa para girar. Solte com embalo e segure uma ferramenta parada: risca um círculo.'],
+  ['Escolha e toque', 'A ferramenta fica do lado da massa. Um toque e ela vai lá, trabalha e volta.'],
+  ['Ímã', 'Enquanto o dedo está na tela aparece a sugestão: meio da massa, grade de 0,5 cm, reta ou círculo. Soltou, ela age.'],
+  ['Rolo e niveladores', 'Cada toque é uma passada. Os niveladores de 3, 5 ou 8 mm seguram a espessura.'],
+  ['Dedo', 'Aperte e segure, arraste, esfregue. Dois dedos na massa beliscam.'],
+  ['Acabamento e cor', 'Pincéis, esponja e lixa vêm até o dedo. Pingue tinta e sove, ou pinte por cima.'],
+  ['Bailarina', 'Arraste fora da massa para girar, ou toque em Girar para um quarto de volta.'],
 ];
 
 /** Sovar: uma bola de massa para apertar, arrastar, beliscar, alisar e tingir com o dedo. */
@@ -361,15 +360,9 @@ function ClayBar({ app }: { app: AppRef }) {
       </div>
       <div className="claybar-row">
         <span className="chip">≈ {Math.round(grams)} g</span>
-        <button
-          type="button"
-          className={`btn sm${spinning ? ' on' : ''}`}
-          aria-pressed={spinning}
-          title="Girar a bailarina"
-          onClick={() => app.current?.spin()}
-        >
+        <button type="button" className={`btn sm${spinning ? ' on' : ''}`} title="Um quarto de volta na bailarina" onClick={() => app.current?.spin()}>
           <Icon.spin />
-          {spinning ? 'Parar' : 'Girar'}
+          Girar
         </button>
         <button
           type="button"

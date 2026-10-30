@@ -8,20 +8,19 @@ Monte peças de argila em 3D no navegador, antes de modelar de verdade. Feito pa
 
 ### Massa (bancada de cerâmica fria)
 
-Uma bola de porcelana fria na base de corte, em cima de uma bailarina (prato giratório), com as ferramentas de ateliê:
+Uma bola de porcelana fria na base de corte, em cima de uma bailarina (prato giratório). A ferramenta escolhida fica deitada ao lado da massa, sempre à vista; um toque manda ela trabalhar, com animação, e ela volta para o lugar.
 
+- **Ímã:** enquanto o dedo está na tela aparece a sugestão do que vai acontecer. Ela gruda no meio da massa, na grade de 0,5 cm da base de corte, endireita linhas em ângulos de 45° e transforma uma volta torta num círculo certinho. Soltou, a ferramenta faz.
 - **Dedo:** aperte e segure (afunda e a massa estufa em volta), arraste, esfregue para alisar, belisque com dois dedos.
-- **Rolo e niveladores:** passe indo e voltando para abrir uma placa. Os niveladores de 3, 5 ou 8 mm seguram a espessura.
-- **Boleador (P, M, G):** segure para um buraquinho redondo; arraste para um sulco.
-- **Silicone:** une emendas e esfuma sem deixar marca.
-- **Espátula:** risque atravessando a massa e solte para cortar reto. O que sai vira sobra.
-- **Esteca (fina ou grossa):** risca vincos. Com a bailarina girando, sai um círculo perfeito.
+- **Rolo e niveladores:** cada toque é uma passada (vai e volta), alternando a direção; segurando, continua rolando. Os niveladores de 3, 5 ou 8 mm seguram a espessura.
+- **Boleador (P, M, G):** toque para um buraquinho redondo; arraste para um sulco.
+- **Esteca (fina ou grossa):** risque e solte: quase reto vira reta, uma volta em torno do meio vira círculo.
+- **Espátula:** risque onde quer cortar e solte. O que sai vira sobra.
 - **Cortadores:** círculo, coração, estrela, folha e flor, em três tamanhos.
-- **Pincel d'água e esponja:** alisam e deixam a massa molhada (mais escura e brilhante), que seca sozinha.
-- **Lixa:** acerta bordas, tira um pouquinho de massa e o verniz.
-- **Tinta:** pingue e sove para tingir a massa (azul com amarelo dá verde) ou pinte por cima com o pincel.
+- **Silicone, pincel d'água, esponja e lixa:** vêm até o dedo e trabalham enquanto ele anda (com o traço suavizado). A água deixa a massa mais escura e brilhante e seca sozinha; a lixa tira um pouquinho de massa e o verniz.
+- **Tinta:** pingue (o pingo cai do potinho) e sove para tingir a massa, ou pinte por cima com o pincel.
 - **Verniz:** brilho ou fosco, pincelado onde quiser.
-- **Bailarina:** arraste fora da massa para girar (com embalo) ou use o botão Girar. Para cima e para baixo inclina a vista; dois dedos aproximam.
+- **Bailarina:** gira só enquanto você arrasta fora da massa; o botão Girar dá um quarto de volta. Para cima e para baixo inclina a vista; dois dedos aproximam.
 - O volume da massa nunca muda sozinho: só a espátula, os cortadores e a lixa tiram massa, e o peso aparece embaixo.
 - Cada ferramenta tem som e vibração próprios (dá para tirar o som no alto-falante). Desfazer, massa nova, foto e STL em milímetros. A massa fica guardada no aparelho.
 
