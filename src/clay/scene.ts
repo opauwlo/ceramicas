@@ -284,10 +284,7 @@ export function createClayApp(host: HTMLElement): ClayApp {
       feel.release();
       g = { kind: 'pinch', a, b, lastD: d, r: Math.min(1.2, Math.max(0.25, d * wpp() * 0.45)) };
       feel.touch(0.6);
-    } else {
-      if (g.kind === 'knead') finishStroke();
-      g = { kind: 'zoom', d0: Math.max(10, d), dist0: dist };
-    }
+    } else g = { kind: 'zoom', d0: Math.max(10, d), dist0: dist };
   };
 
   const onMove = (ev: PointerEvent) => {
