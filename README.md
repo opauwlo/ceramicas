@@ -16,11 +16,11 @@ Uma bola de porcelana fria na base de corte, em cima de uma bailarina (prato gir
 - **Boleador (P, M, G):** toque para um buraquinho redondo; arraste para um sulco.
 - **Esteca (fina ou grossa):** risque e solte: quase reto vira reta, uma volta em torno do meio vira círculo.
 - **Espátula:** risque onde quer cortar e solte. O que sai vira sobra.
-- **Cortadores:** círculo, coração, estrela, folha e flor, em três tamanhos.
+- **Cortadores:** círculo, coração, estrela, folha, flor e mariposa, em três tamanhos.
 - **Silicone, pincel d'água, esponja e lixa:** vêm até o dedo e trabalham enquanto ele anda (com o traço suavizado). A água deixa a massa mais escura e brilhante e seca sozinha; a lixa tira um pouquinho de massa e o verniz.
-- **Tinta:** pingue (o pingo cai do potinho) e sove para tingir a massa, ou pinte por cima com o pincel.
+- **Tinta:** pingue (o pingo cai do potinho) e sove para tingir a massa, ou pinte por cima com o pincel fino ou largo.
 - **Verniz:** brilho ou fosco, pincelado onde quiser.
-- **Bailarina:** gira só enquanto você arrasta fora da massa; o botão Girar dá um quarto de volta. Para cima e para baixo inclina a vista; dois dedos aproximam.
+- **Bailarina:** gira só quando você arrasta o fundo, fora da bancada (tocar na bancada nunca gira); o botão Girar dá um quarto de volta. Para cima e para baixo inclina a vista; dois dedos aproximam.
 - O volume da massa nunca muda sozinho: só a espátula, os cortadores e a lixa tiram massa, e o peso aparece embaixo.
 - Cada ferramenta tem som e vibração próprios (dá para tirar o som no alto-falante). Desfazer, massa nova, foto e STL em milímetros. A massa fica guardada no aparelho.
 

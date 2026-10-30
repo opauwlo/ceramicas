@@ -295,6 +295,17 @@ function ToolOptions() {
             ]}
             onChange={tintaModo => set({ tintaModo })}
           />
+          {s.tintaModo === 'pincel' && (
+            <Seg
+              label="Largura do pincel"
+              value={s.pincel}
+              options={[
+                ['fino', 'Fino'],
+                ['largo', 'Largo'],
+              ]}
+              onChange={pincel => set({ pincel })}
+            />
+          )}
           <div className="tintas" role="group" aria-label="Cor da tinta">
             {TINTAS.map(([c, name]) => (
               <button
@@ -325,6 +336,15 @@ function ToolOptions() {
               ['fosco', 'Fosco'],
             ]}
             onChange={verniz => set({ verniz })}
+          />
+          <Seg
+            label="Largura do pincel"
+            value={s.pincel}
+            options={[
+              ['fino', 'Fino'],
+              ['largo', 'Largo'],
+            ]}
+            onChange={pincel => set({ pincel })}
           />
         </div>
       );

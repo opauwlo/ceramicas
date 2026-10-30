@@ -5,7 +5,7 @@ import type { XZ } from './dough';
  * Todos cabem num círculo de raio 1; o tamanho escolhido multiplica.
  */
 
-export type CutterShape = 'circulo' | 'coracao' | 'estrela' | 'folha' | 'flor';
+export type CutterShape = 'circulo' | 'coracao' | 'estrela' | 'folha' | 'flor' | 'mariposa';
 
 export const CUTTERS: ReadonlyArray<readonly [CutterShape, string]> = [
   ['circulo', 'Círculo'],
@@ -13,6 +13,7 @@ export const CUTTERS: ReadonlyArray<readonly [CutterShape, string]> = [
   ['estrela', 'Estrela'],
   ['folha', 'Folha'],
   ['flor', 'Flor'],
+  ['mariposa', 'Mariposa'],
 ];
 
 /** Diâmetro de cada tamanho, em cm. */
@@ -65,6 +66,15 @@ export function cutterOutline(shape: CutterShape): XZ[] {
         // folha de ponta fina dos dois lados, deitada em pé
         const u = 0.55 * Math.sin(t) * Math.pow(1 - Math.abs(Math.cos(t)), 0.45);
         pts.push([u, Math.cos(t)]);
+        break;
+      }
+      case 'mariposa': {
+        // quatro asas (as de cima maiores), cabeça em cima e cauda embaixo
+        const a = t + Math.PI / 2;
+        const s = Math.sin(a);
+        const wing = Math.pow(Math.abs(Math.sin(2 * a)), 0.65);
+        const r = (0.34 + 0.66 * wing) * (1 + 0.2 * s);
+        pts.push([r * Math.cos(a), r * Math.sin(a)]);
         break;
       }
       case 'flor': {

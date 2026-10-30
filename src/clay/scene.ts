@@ -74,7 +74,9 @@ type Gesture =
   | { kind: 'pinch'; a: number; b: number; lastD: number; r: number }
   | { kind: 'live'; id: number; tool: LiveTool; prev: V3 | null; sx: number; sy: number; lx: number; ly: number }
   | { kind: 'aim'; id: number; tool: AimTool; sx: number; sy: number; start: XZ | null; raw: XZ[]; end: XZ | null; key: string }
-  | { kind: 'roll'; id: number };
+  | { kind: 'roll'; id: number }
+  /** toque na bancada fora da massa com o dedo: não faz nada (e não gira a bailarina) */
+  | { kind: 'idle'; id: number };
 
 interface Pose {
   p: THREE.Vector3;
@@ -94,7 +96,9 @@ const HISTORY = 30;
 /** Medidas de cada ferramenta, em cm. */
 const BOL = { P: 0.12, M: 0.22, G: 0.35 } as const;
 const ESTECA = { fina: [0.12, 0.12], grossa: [0.2, 0.2] } as const;
-const R_LIVE: Record<LiveTool, number> = { silicone: 0.35, agua: 0.3, esponja: 0.85, lixa: 0.55, tinta: 0.16, verniz: 0.38 };
+const R_LIVE: Record<LiveTool, number> = { silicone: 0.35, agua: 0.3, esponja: 0.85, lixa: 0.55, tinta: 0.16, verniz: 0.3 };
+/** pincel largo de tinta e de verniz */
+const R_LARGO = 0.42;
 /** As ferramentas de mão aparecem nesse tamanho (o desenho original é de cabo comprido). */
 const HAND_SCALE = 0.6;
 
@@ -1062,14 +1066,20 @@ export function createClayApp(host: HTMLElement): ClayApp {
       const h = hitAt(p.x, p.y);
       const gp = groundAt(p.x, p.y, 0);
       const onTable = !!gp && Math.hypot(gp.x, gp.z) < table.radius * 1.8;
+      // em cima da bancada (bailarina e base de corte) a bailarina nunca gira: só arrastando o fundo
+      const onBench = !!gp && Math.hypot(gp.x, gp.z) < table.radius * 1.12;
       const orbit = () => {
         g = { kind: 'orbit', id: ev.pointerId, sx: p.x, lx: p.x, ly: p.y, moved: false };
       };
       if (busy()) {
-        // a ferramenta está trabalhando: só dá para olhar em volta (ou segurar o rolo)
+        // a ferramenta está trabalhando: segurar o rolo continua rolando; na bancada, nada acontece
         if (tool === 'rolo' && (h || onTable)) {
           rollHold = true;
           g = { kind: 'roll', id: ev.pointerId };
+          return;
+        }
+        if (h || onBench) {
+          g = { kind: 'idle', id: ev.pointerId };
           return;
         }
         return orbit();
@@ -1082,10 +1092,15 @@ export function createClayApp(host: HTMLElement): ClayApp {
       }
       if (tool === 'espatula' && (h || gp)) return startAim(ev.pointerId, p, 'espatula');
       if (tool === 'cortador' && (h || onTable)) return startAim(ev.pointerId, p, 'cortador');
-      if ((tool === 'esteca' || tool === 'boleador') && h) return startAim(ev.pointerId, p, tool);
-      if (h && (tool === 'silicone' || tool === 'agua' || tool === 'esponja' || tool === 'lixa' || tool === 'verniz')) return startLive(ev.pointerId, p, tool);
-      if (h && tool === 'tinta' && s.tintaModo === 'pincel') return startLive(ev.pointerId, p, 'tinta');
+      // esteca, boleador e pincéis podem começar fora da massa: só agem quando o dedo chega nela
+      if ((tool === 'esteca' || tool === 'boleador') && (h || onBench)) return startAim(ev.pointerId, p, tool);
+      if ((h || onBench) && (tool === 'silicone' || tool === 'agua' || tool === 'esponja' || tool === 'lixa' || tool === 'verniz')) return startLive(ev.pointerId, p, tool);
+      if ((h || onBench) && tool === 'tinta' && s.tintaModo === 'pincel') return startLive(ev.pointerId, p, 'tinta');
       if (h && (tool === 'dedo' || tool === 'tinta')) return startKnead(ev.pointerId, p, h, ev);
+      if (onBench) {
+        g = { kind: 'idle', id: ev.pointerId };
+        return;
+      }
       return orbit();
     }
     const [a, b] = [...ptrs.keys()];
@@ -1176,7 +1191,7 @@ export function createClayApp(host: HTMLElement): ClayApp {
     } else if (g.kind === 'roll' && g.id === ev.pointerId) {
       rollHold = false;
       g = { kind: 'none' };
-    } else if (g.kind === 'orbit' && g.id === ev.pointerId) g = { kind: 'none' };
+    } else if ((g.kind === 'orbit' || g.kind === 'idle') && g.id === ev.pointerId) g = { kind: 'none' };
     else if (g.kind === 'zoom') g = { kind: 'none' };
   };
 
@@ -1359,11 +1374,11 @@ export function createClayApp(host: HTMLElement): ClayApp {
         shape = color = true;
         break;
       case 'tinta':
-        dough.paintSeg(from, b, R_LIVE.tinta, linear(ui.color));
+        dough.paintSeg(from, b, ui.pincel === 'largo' ? R_LARGO : R_LIVE.tinta, linear(ui.color));
         color = true;
         break;
       case 'verniz':
-        dough.varnishSeg(from, b, R_LIVE.verniz, ui.verniz === 'brilho');
+        dough.varnishSeg(from, b, ui.pincel === 'largo' ? R_LARGO : R_LIVE.verniz, ui.verniz === 'brilho');
         color = true;
         break;
     }

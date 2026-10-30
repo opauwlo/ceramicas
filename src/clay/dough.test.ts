@@ -219,7 +219,7 @@ describe('ferramentas', () => {
   });
 
   it('os contornos dos cortadores cabem no círculo de raio 1', () => {
-    for (const s of ['circulo', 'coracao', 'estrela', 'folha', 'flor'] as const) {
+    for (const s of ['circulo', 'coracao', 'estrela', 'folha', 'flor', 'mariposa'] as const) {
       const o = cutterOutline(s);
       let r = 0;
       for (const [u, v] of o) r = Math.max(r, Math.hypot(u, v));

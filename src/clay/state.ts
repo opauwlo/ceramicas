@@ -33,6 +33,8 @@ export interface ClayUi {
   cutter: CutterShape;
   cutterSize: Size3;
   verniz: 'brilho' | 'fosco';
+  /** largura do pincel de tinta e de verniz */
+  pincel: 'fino' | 'largo';
   sound: boolean;
   canUndo: boolean;
   canRedo: boolean;
@@ -73,6 +75,7 @@ export const useClay = create<ClayUi>()(set => ({
   cutter: 'coracao',
   cutterSize: 'M',
   verniz: 'brilho',
+  pincel: 'fino',
   sound: soundPref(),
   canUndo: false,
   canRedo: false,
