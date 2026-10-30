@@ -66,6 +66,32 @@ export const Icon = {
       <path d="M4 20h16" />
     </Svg>
   ),
+  sound: () => (
+    <Svg>
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+      <path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" />
+    </Svg>
+  ),
+  mute: () => (
+    <Svg>
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+      <path d="m16 9.5 5 5M21 9.5l-5 5" />
+    </Svg>
+  ),
+  help: () => (
+    <Svg>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6" />
+      <circle cx="12" cy="17" r="0.6" fill="currentColor" />
+    </Svg>
+  ),
+  /** Bolota nova de massa. */
+  blob: () => (
+    <Svg>
+      <path d="M12 4.5c4.4 0 7.5 3 7.5 7.4 0 4-3.2 7.1-7.5 7.1S4.5 15.9 4.5 11.9C4.5 7.5 7.6 4.5 12 4.5z" />
+      <path d="M12 9v6M9 12h6" />
+    </Svg>
+  ),
   close: () => (
     <Svg>
       <path d="M6 6l12 12M18 6 6 18" />

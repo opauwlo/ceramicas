@@ -5,6 +5,18 @@ import type { Doc, Piece, PieceType, Vec3 } from '../model/types';
 
 export type Tab = 'pecas' | 'forma' | 'pintura' | 'cena' | 'arquivo';
 export type PanelSize = 'min' | 'mid' | 'max';
+/** Sovar uma massa só, com o dedo, ou montar com peças prontas. */
+export type Mode = 'massa' | 'pecas';
+
+const MODE_KEY = 'atelie-modo';
+const savedMode = (): Mode => {
+  try {
+    return localStorage.getItem(MODE_KEY) === 'pecas' ? 'pecas' : 'massa';
+  } catch {
+    return 'massa';
+  }
+};
+
 /** O que o dedo faz ao tocar numa peça na mesa. */
 export type Tool = 'mover' | 'amassar' | 'girar' | 'alisar' | 'pintar';
 
@@ -14,6 +26,7 @@ export interface Toast {
 }
 
 export interface State {
+  mode: Mode;
   doc: Doc;
   /** último estado gravado no histórico */
   saved: Doc;
@@ -32,6 +45,7 @@ export interface State {
   toast: Toast | null;
   photo: string | null;
 
+  setMode(mode: Mode): void;
   init(doc: Doc): void;
   setTab(tab: Tab): void;
   cyclePanel(): void;
@@ -71,6 +85,7 @@ let soon: ReturnType<typeof setTimeout> | undefined;
 let toastSeq = 0;
 
 export const useStore = create<State>()((set, get) => ({
+  mode: savedMode(),
   doc: emptyDoc(),
   saved: emptyDoc(),
   past: [],
@@ -85,6 +100,15 @@ export const useStore = create<State>()((set, get) => ({
   dragging: false,
   toast: null,
   photo: null,
+
+  setMode: mode => {
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+    } catch {
+      // sem acesso: só não lembra na próxima vez
+    }
+    set({ mode });
+  },
 
   init: doc => set({ doc: cloneDoc(doc), saved: cloneDoc(doc), past: [], future: [], selectedId: null }),
 

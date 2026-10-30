@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { ClayScreen } from './clay/ClayScreen';
 import { Viewport } from './scene/Viewport';
 import { useStore } from './state/store';
 import { InfoChips, PaintBar, PhotoDialog, PlaceBanner, QuickBar, ToastView, ToolBelt, TopBar } from './ui/Overlay';
@@ -35,6 +36,12 @@ function useShortcuts() {
 }
 
 export default function App() {
+  const mode = useStore(s => s.mode);
+  return mode === 'massa' ? <ClayScreen /> : <Atelie />;
+}
+
+/** Montar com peças prontas: o ateliê de antes. */
+function Atelie() {
   const panel = useStore(s => s.panel);
   useShortcuts();
   return (

@@ -5,6 +5,7 @@ import { topOf } from '../scene/bridge';
 import { useMetrics, useStore, type Tool } from '../state/store';
 import { downloadPhoto, mirrorSelected, rotateSelected, sharePhoto, sitSelected, takePhoto } from './actions';
 import { Icon, ShapeIcon } from './icons';
+import { ModeSwitch } from './ModeSwitch';
 
 export function TopBar() {
   return (
@@ -13,6 +14,7 @@ export function TopBar() {
         <Icon.mark />
         <span>Ateliê de Argila</span>
       </div>
+      <ModeSwitch />
       <button
         type="button"
         className="ib"
@@ -39,7 +41,7 @@ export function TopBar() {
       </button>
       <button type="button" className="btn primary sm" onClick={takePhoto}>
         <Icon.camera />
-        Foto
+        <span className="foto-tx">Foto</span>
       </button>
     </header>
   );
