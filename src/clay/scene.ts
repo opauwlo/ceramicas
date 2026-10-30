@@ -1317,7 +1317,6 @@ export function createClayApp(host: HTMLElement): ClayApp {
     }
     const a = s.prev ?? h.c;
     const b = h.c;
-    const n = h.n;
     const seg = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
     const from = seg > 1.2 ? b : a;
     s.prev = b;
