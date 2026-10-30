@@ -6,18 +6,24 @@ Monte peças de argila em 3D no navegador, antes de modelar de verdade. Feito pa
 
 ## Como usar
 
-### Massa (sovar)
+### Massa (bancada de cerâmica fria)
 
-Uma bola de porcelana fria em cima da tábua, para modelar com o dedo como massa de verdade.
+Uma bola de porcelana fria na base de corte, em cima de uma bailarina (prato giratório), com as ferramentas de ateliê:
 
-- **Aperte:** encoste e segure. O dedo afunda e a massa estufa em volta (o volume nunca muda).
-- **Arraste:** a massa vai junto com o dedo, abrindo um sulco macio.
-- **Esfregue:** vai e volta rapidinho no mesmo lugar para alisar.
-- **Belisque:** com um dedo na massa, junte o segundo dedo para puxar uma ponta (orelha, bico, antena). Afastando, achata.
-- **Pingos de tinta:** escolha uma cor, toque na massa e sove. A tinta vira rastro, mármore e, sovando mais, uma cor só. Azul com amarelo dá verde.
-- **Gire e aproxime:** arraste fora da massa para girar a tábua; dois dedos aproximam.
-- A massa treme e assenta, o celular vibra e tem som de massa (dá para desligar no alto-falante).
-- **Massa nova**, desfazer e refazer, foto e STL em milímetros. A massa fica guardada no aparelho.
+- **Dedo:** aperte e segure (afunda e a massa estufa em volta), arraste, esfregue para alisar, belisque com dois dedos.
+- **Rolo e niveladores:** passe indo e voltando para abrir uma placa. Os niveladores de 3, 5 ou 8 mm seguram a espessura.
+- **Boleador (P, M, G):** segure para um buraquinho redondo; arraste para um sulco.
+- **Silicone:** une emendas e esfuma sem deixar marca.
+- **Espátula:** risque atravessando a massa e solte para cortar reto. O que sai vira sobra.
+- **Esteca (fina ou grossa):** risca vincos. Com a bailarina girando, sai um círculo perfeito.
+- **Cortadores:** círculo, coração, estrela, folha e flor, em três tamanhos.
+- **Pincel d'água e esponja:** alisam e deixam a massa molhada (mais escura e brilhante), que seca sozinha.
+- **Lixa:** acerta bordas, tira um pouquinho de massa e o verniz.
+- **Tinta:** pingue e sove para tingir a massa (azul com amarelo dá verde) ou pinte por cima com o pincel.
+- **Verniz:** brilho ou fosco, pincelado onde quiser.
+- **Bailarina:** arraste fora da massa para girar (com embalo) ou use o botão Girar. Para cima e para baixo inclina a vista; dois dedos aproximam.
+- O volume da massa nunca muda sozinho: só a espátula, os cortadores e a lixa tiram massa, e o peso aparece embaixo.
+- Cada ferramenta tem som e vibração próprios (dá para tirar o som no alto-falante). Desfazer, massa nova, foto e STL em milímetros. A massa fica guardada no aparelho.
 
 ### Peças
 

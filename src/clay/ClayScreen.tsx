@@ -4,9 +4,11 @@ import { useStore } from '../state/store';
 import { Icon } from '../ui/icons';
 import { ModeSwitch } from '../ui/ModeSwitch';
 import { PhotoDialog, ToastView } from '../ui/Overlay';
+import { CUTTERS } from './cutters';
 import { feel } from './feel';
 import { createClayApp, type ClayApp } from './scene';
-import { useClay } from './state';
+import { useClay, type ClayTool, type Nivel, type Size3 } from './state';
+import { CutterIcon, ToolIcon } from './ToolIcons';
 
 /** Tintas para pingar na massa, como guache em porcelana fria. */
 const TINTAS: ReadonlyArray<readonly [string, string]> = [
@@ -22,13 +24,52 @@ const TINTAS: ReadonlyArray<readonly [string, string]> = [
   ['#ffffff', 'Branco'],
 ];
 
+/** A bancada, em grupos, com o recado que aparece ao pegar cada ferramenta. */
+const BANCADA: ReadonlyArray<readonly [string, ReadonlyArray<readonly [ClayTool, string, string]>]> = [
+  [
+    'Modelar',
+    [
+      ['dedo', 'Dedo', 'Aperte, arraste e esfregue. Dois dedos na massa beliscam.'],
+      ['rolo', 'Rolo', 'Passe o rolo por cima, indo e voltando. Os niveladores seguram a espessura.'],
+      ['boleador', 'Boleador', 'Segure para fazer um buraquinho redondo; arraste para um sulco.'],
+      ['silicone', 'Silicone', 'Arraste para unir emendas e esfumar sem deixar marca.'],
+    ],
+  ],
+  [
+    'Cortar e marcar',
+    [
+      ['espatula', 'Espátula', 'Risque uma linha atravessando a massa e solte para cortar reto.'],
+      ['esteca', 'Esteca', 'Risque para marcar um vinco. Com a bailarina girando, sai um círculo.'],
+      ['cortador', 'Cortador', 'Toque em cima da massa e solte: corta no formato. Melhor numa placa aberta com o rolo.'],
+    ],
+  ],
+  [
+    'Acabamento',
+    [
+      ['agua', 'Pincel d’água', 'Pincele para tirar marquinhas. A massa fica molhada e seca sozinha.'],
+      ['esponja', 'Esponja', 'Passe a esponja úmida para deixar tudo lisinho.'],
+      ['lixa', 'Lixa', 'Lixe para acertar bordas. Tira um pouquinho de massa e o verniz.'],
+    ],
+  ],
+  [
+    'Cor',
+    [
+      ['tinta', 'Tinta', 'Pingo: pingue e sove para tingir a massa. Pincel: pinte por cima.'],
+      ['verniz', 'Verniz', 'Pincele verniz para dar brilho. No fosco, tira o brilho.'],
+    ],
+  ],
+];
+
+const HINT = new Map(BANCADA.flatMap(([, ts]) => ts.map(([t, , h]) => [t, h] as const)));
+
 const DICAS: ReadonlyArray<readonly [string, string]> = [
-  ['Aperte', 'Encoste e segure. O dedo afunda e a massa estufa em volta.'],
-  ['Arraste', 'A massa (e a cor) vai junto com o dedo.'],
-  ['Esfregue', 'Vai e volta rapidinho no mesmo lugar: alisa.'],
-  ['Belisque', 'Dois dedos na massa, juntando: puxa uma ponta. Afastando: achata.'],
-  ['Pingue tinta', 'Escolha uma cor, toque na massa e sove até misturar.'],
-  ['Gire', 'Arraste fora da massa para girar a tábua. Dois dedos aproximam.'],
+  ['Dedo', 'Aperte e segure: afunda e a massa estufa em volta. Arraste, esfregue, belisque com dois dedos.'],
+  ['Rolo e niveladores', 'Abra uma placa por igual: 3, 5 ou 8 mm, como nas réguas de verdade.'],
+  ['Cortar', 'Espátula corta reto; cortadores cortam no formato. O que sai vira sobra.'],
+  ['Marcar', 'Esteca risca vincos, boleador faz buraquinhos e sulcos redondos.'],
+  ['Acabamento', 'Pincel d’água e esponja alisam (e molham), lixa acerta bordas.'],
+  ['Cor', 'Pingue tinta e sove para tingir, ou pinte por cima. Verniz dá brilho.'],
+  ['Bailarina', 'Arraste fora da massa para girar. Solte com embalo e segure uma ferramenta parada: risca um círculo.'],
 ];
 
 /** Sovar: uma bola de massa para apertar, arrastar, beliscar, alisar e tingir com o dedo. */
@@ -52,7 +93,7 @@ export function ClayScreen() {
       } else if (e.key === 'Escape') {
         const s = useStore.getState();
         if (s.photo) s.setPhoto(null);
-        else useClay.getState().set({ drop: null, coach: false });
+        else useClay.getState().set({ tool: 'dedo', coach: false });
       }
     };
     window.addEventListener('keydown', onKey);
@@ -131,54 +172,215 @@ function ClayTop({ app }: { app: AppRef }) {
   );
 }
 
-/** Recadinho do que o dedo está fazendo, no alto da mesa. */
+/** Recadinho do que a ferramenta está fazendo, no alto da mesa. */
 function Doing() {
   const doing = useClay(s => s.doing);
-  const drop = useClay(s => s.drop);
-  const text = doing ? `${doing}…` : drop ? 'toque na massa para pingar a tinta' : '';
-  if (!text) return null;
+  if (!doing) return null;
   return (
-    <div className="doing" key={text} aria-live="polite">
-      {text}
+    <div className="doing" key={doing} aria-live="polite">
+      {doing}…
     </div>
   );
 }
 
-function ClayBar({ app }: { app: AppRef }) {
-  const drop = useClay(s => s.drop);
-  const grams = useClay(s => s.grams);
+function pick(tool: ClayTool) {
+  const s = useClay.getState();
+  feel.tick(5);
+  s.set({ tool });
+  const h = HINT.get(tool);
+  if (h) useStore.getState().notify(h);
+}
+
+function Seg<T extends string | number>({ label, value, options, onChange }: { label: string; value: T; options: ReadonlyArray<readonly [T, string]>; onChange(v: T): void }) {
   return (
-    <section className="claybar" aria-label="Tintas e massa">
-      <div className="tintas" role="group" aria-label="Pingos de tinta">
-        {TINTAS.map(([c, name]) => (
-          <button
-            key={c}
-            type="button"
-            className="pingo"
-            style={{ '--c': c } as CSSProperties}
-            aria-label={`Pingo de ${name.toLowerCase()}`}
-            title={name}
-            aria-pressed={drop === c}
-            onClick={() => {
-              feel.tick(5);
-              useClay.getState().set({ drop: drop === c ? null : c });
-            }}
+    <div className="opt-seg" role="group" aria-label={label}>
+      {options.map(([k, t]) => (
+        <button
+          key={String(k)}
+          type="button"
+          aria-pressed={value === k}
+          onClick={() => {
+            feel.tick(4);
+            onChange(k);
+          }}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const SIZES: ReadonlyArray<readonly [Size3, string]> = [
+  ['P', 'P'],
+  ['M', 'M'],
+  ['G', 'G'],
+];
+
+/** Opções da ferramenta escolhida, logo acima da bancada. */
+function ToolOptions() {
+  const s = useClay();
+  const set = s.set;
+  switch (s.tool) {
+    case 'rolo':
+      return (
+        <div className="opts">
+          <span className="opt-label">Niveladores</span>
+          <Seg<Nivel>
+            label="Espessura dos niveladores"
+            value={s.nivel}
+            options={[
+              [0, 'Sem'],
+              [3, '3 mm'],
+              [5, '5 mm'],
+              [8, '8 mm'],
+            ]}
+            onChange={nivel => set({ nivel })}
           />
+        </div>
+      );
+    case 'boleador':
+      return (
+        <div className="opts">
+          <span className="opt-label">Bolinha</span>
+          <Seg<Size3> label="Tamanho da bolinha" value={s.bol} options={SIZES} onChange={bol => set({ bol })} />
+        </div>
+      );
+    case 'esteca':
+      return (
+        <div className="opts">
+          <span className="opt-label">Ponta</span>
+          <Seg
+            label="Ponta da esteca"
+            value={s.esteca}
+            options={[
+              ['fina', 'Fina'],
+              ['grossa', 'Grossa'],
+            ]}
+            onChange={esteca => set({ esteca })}
+          />
+        </div>
+      );
+    case 'cortador':
+      return (
+        <div className="opts">
+          <div className="opt-shapes" role="group" aria-label="Formato do cortador">
+            {CUTTERS.map(([k, name]) => (
+              <button
+                key={k}
+                type="button"
+                aria-label={name}
+                title={name}
+                aria-pressed={s.cutter === k}
+                onClick={() => {
+                  feel.tick(4);
+                  set({ cutter: k });
+                }}
+              >
+                <CutterIcon shape={k} />
+              </button>
+            ))}
+          </div>
+          <Seg<Size3> label="Tamanho do cortador" value={s.cutterSize} options={SIZES} onChange={cutterSize => set({ cutterSize })} />
+        </div>
+      );
+    case 'tinta':
+      return (
+        <div className="opts">
+          <Seg
+            label="Jeito de usar a tinta"
+            value={s.tintaModo}
+            options={[
+              ['pingo', 'Pingo'],
+              ['pincel', 'Pincel'],
+            ]}
+            onChange={tintaModo => set({ tintaModo })}
+          />
+          <div className="tintas" role="group" aria-label="Cor da tinta">
+            {TINTAS.map(([c, name]) => (
+              <button
+                key={c}
+                type="button"
+                className="pingo"
+                style={{ '--c': c } as CSSProperties}
+                aria-label={name}
+                title={name}
+                aria-pressed={s.color === c}
+                onClick={() => {
+                  feel.tick(5);
+                  set({ color: c });
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    case 'verniz':
+      return (
+        <div className="opts">
+          <Seg
+            label="Acabamento do verniz"
+            value={s.verniz}
+            options={[
+              ['brilho', 'Brilho'],
+              ['fosco', 'Fosco'],
+            ]}
+            onChange={verniz => set({ verniz })}
+          />
+        </div>
+      );
+    default:
+      return <p className="opts opt-hint">{HINT.get(s.tool)}</p>;
+  }
+}
+
+function ClayBar({ app }: { app: AppRef }) {
+  const tool = useClay(s => s.tool);
+  const color = useClay(s => s.color);
+  const grams = useClay(s => s.grams);
+  const spinning = useClay(s => s.spinning);
+  return (
+    <section className="claybar" aria-label="Bancada de ferramentas">
+      <ToolOptions />
+      <div className="tooltray" role="toolbar" aria-label="Ferramentas">
+        {BANCADA.map(([group, tools]) => (
+          <div className="toolgroup" key={group} role="group" aria-label={group}>
+            <span className="toolgroup-name" aria-hidden="true">
+              {group}
+            </span>
+            <div className="toolgroup-row">
+              {tools.map(([t, label]) => (
+                <button key={t} type="button" className="tool" aria-pressed={tool === t} onClick={() => pick(t)}>
+                  <ToolIcon tool={t} color={t === 'tinta' ? color : undefined} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
       <div className="claybar-row">
-        <span className="chip">≈ {Math.round(grams)} g de massa</span>
+        <span className="chip">≈ {Math.round(grams)} g</span>
+        <button
+          type="button"
+          className={`btn sm${spinning ? ' on' : ''}`}
+          aria-pressed={spinning}
+          title="Girar a bailarina"
+          onClick={() => app.current?.spin()}
+        >
+          <Icon.spin />
+          {spinning ? 'Parar' : 'Girar'}
+        </button>
         <button
           type="button"
           className="btn sm"
           onClick={() => {
             app.current?.fresh();
-            useClay.getState().set({ drop: null });
-            useStore.getState().notify('Massa nova na tábua. Desfazer traz a outra de volta.');
+            useStore.getState().notify('Massa nova na bancada. Desfazer traz a outra de volta.');
           }}
         >
           <Icon.blob />
-          Massa nova
+          Nova
         </button>
         <button
           type="button"
@@ -190,7 +392,7 @@ function ClayBar({ app }: { app: AppRef }) {
         >
           STL
         </button>
-        <button type="button" className="ib" aria-label="Como sovar" title="Como sovar" onClick={() => useClay.getState().set({ coach: true })}>
+        <button type="button" className="ib" aria-label="Como usar a bancada" title="Como usar a bancada" onClick={() => useClay.getState().set({ coach: true })}>
           <Icon.help />
         </button>
       </div>
@@ -204,18 +406,18 @@ function Coach() {
   const close = () => {
     useClay.getState().set({ coach: false });
     try {
-      localStorage.setItem('atelie-massa-dicas', '1');
+      localStorage.setItem('atelie-massa-dicas', '2');
     } catch {
       // tudo bem
     }
   };
   return (
-    <div className="coach" role="dialog" aria-modal="true" aria-label="Como sovar" onClick={e => e.target === e.currentTarget && close()}>
+    <div className="coach" role="dialog" aria-modal="true" aria-label="Como usar a bancada" onClick={e => e.target === e.currentTarget && close()}>
       <div className="coach-box">
         <span className="buddy" aria-hidden="true">
           <Icon.mark />
         </span>
-        <h2>Sove com o dedo</h2>
+        <h2>Sua bancada de cerâmica fria</h2>
         <ul>
           {DICAS.map(([t, d]) => (
             <li key={t}>
@@ -224,7 +426,7 @@ function Coach() {
           ))}
         </ul>
         <button type="button" className="btn primary" onClick={close}>
-          Bora sovar!
+          Bora modelar!
         </button>
       </div>
     </div>

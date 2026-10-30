@@ -590,7 +590,7 @@ input[type='color'] { width: 100%; height: 44px; padding: 3px; border: 1px solid
   position: relative;
   z-index: 2;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   margin-top: -18px;
   padding: 16px max(14px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
   background: var(--panel);
@@ -599,6 +599,7 @@ input[type='color'] { width: 100%; height: 44px; padding: 3px; border: 1px solid
 }
 .tintas {
   display: flex;
+  flex: none;
   gap: 10px;
   padding: 8px 4px 6px;
   overflow-x: auto;
@@ -622,8 +623,91 @@ input[type='color'] { width: 100%; height: 44px; padding: 3px; border: 1px solid
 }
 .pingo[aria-pressed='true'] { transform: rotate(-45deg) scale(1.22) translate(3px, -3px); box-shadow: 0 0 0 3px var(--accent), inset -4px -5px 0 rgba(0, 0, 0, 0.12), inset 3px 3px 0 rgba(255, 255, 255, 0.35); }
 .pingo:active { transform: rotate(-45deg) scale(0.85); }
-.claybar-row { display: flex; align-items: center; gap: 8px; }
+.claybar-row { display: flex; align-items: center; gap: 6px; }
 .claybar-row .chip { margin-right: auto; box-shadow: none; }
+.btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.btn.on svg { animation: spin-icon 1.2s linear infinite; }
+@keyframes spin-icon { to { transform: rotate(360deg); } }
+
+/* opções da ferramenta escolhida */
+.opts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.opts::-webkit-scrollbar { display: none; }
+.opt-label { flex: none; color: var(--muted); font: 700 13px/1 var(--f-body); }
+.opt-hint { color: var(--muted); font-size: 13.5px; line-height: 1.3; }
+.opt-seg { display: flex; flex: none; gap: 2px; padding: 3px; border-radius: 999px; background: var(--sunk); }
+.opt-seg button {
+  min-width: 40px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: 700 13.5px/1 var(--f-body);
+  transition: background-color 0.15s, color 0.15s, transform 0.25s var(--spring);
+}
+.opt-seg button[aria-pressed='true'] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(92, 56, 30, 0.2); }
+.opt-seg button:active { transform: scale(0.92); }
+.opt-shapes { display: flex; flex: none; gap: 4px; }
+.opt-shapes button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--muted);
+  transition: transform 0.25s var(--spring);
+}
+.opt-shapes button svg { width: 26px; height: 26px; }
+.opt-shapes button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.opt-shapes button:active { transform: scale(0.88); }
+.opts .tintas { padding: 4px 2px; }
+
+/* a bancada: ferramentas em grupos, rolando para o lado */
+.tooltray {
+  display: flex;
+  gap: 14px;
+  margin: 0 calc(-1 * max(14px, env(safe-area-inset-left, 0px)));
+  padding: 2px max(14px, env(safe-area-inset-left, 0px)) 4px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: max(14px, env(safe-area-inset-left, 0px));
+  scrollbar-width: none;
+}
+.tooltray::-webkit-scrollbar { display: none; }
+.toolgroup { display: grid; flex: none; gap: 3px; scroll-snap-align: start; }
+.toolgroup-name { color: var(--muted); font: 700 10.5px/1 var(--f-body); letter-spacing: 0.04em; text-transform: uppercase; }
+.toolgroup-row { display: flex; gap: 4px; }
+.tool {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  width: 66px;
+  padding: 8px 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 11.5px/1.1 var(--f-body);
+  box-shadow: var(--press);
+  transition: transform 0.25s var(--spring), background-color 0.15s, border-color 0.15s;
+}
+.tool svg { width: 28px; height: 28px; }
+.tool span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); box-shadow: 0 2px 0 rgba(92, 40, 15, 0.35); }
+.tool[aria-pressed='true'] svg { animation: wiggle 0.45s var(--spring); }
+.tool:active { transform: translateY(1px) scale(0.93); box-shadow: none; }
 
 .coach {
   position: fixed;

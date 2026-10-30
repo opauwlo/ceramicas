@@ -1,8 +1,8 @@
 import { INK_MAX, type Dough } from './dough';
 
 /*
- * Guarda a massa no aparelho. Posições em inteiros de 1/2000 cm e pigmento em 0–255,
- * em base64: uns 120 KB, bem menos que o limite do navegador.
+ * Guarda a massa no aparelho. Posições em inteiros de 1/2000 cm, pigmento e verniz em 0–255,
+ * em base64: uns 130 KB, bem menos que o limite do navegador.
  */
 
 const KEY = 'atelie-massa-v2';
@@ -28,26 +28,33 @@ export function packDough(d: Dough): string {
   for (let i = 0; i < p.length; i++) p[i] = Math.max(-32767, Math.min(32767, Math.round(d.rest[i] * Q)));
   const c = new Uint8Array(d.ink.length);
   for (let i = 0; i < c.length; i++) c[i] = Math.max(0, Math.min(255, Math.round(d.ink[i] * QI)));
-  return JSON.stringify({ v: 2, n: d.n, level: d.level, radius: d.radius, p: toB64(new Uint8Array(p.buffer)), c: toB64(c) });
+  const g = new Uint8Array(d.n);
+  for (let i = 0; i < g.length; i++) g[i] = Math.max(0, Math.min(255, Math.round(d.varnish[i] * 255)));
+  return JSON.stringify({ v: 2, n: d.n, level: d.level, radius: d.radius, p: toB64(new Uint8Array(p.buffer)), c: toB64(c), g: toB64(g) });
 }
 
 /** Põe na massa o que foi guardado. Devolve false se o guardado não serve para esta massa. */
 export function unpackDough(d: Dough, raw: string): boolean {
   try {
-    const o = JSON.parse(raw) as { v?: number; n?: number; p?: string; c?: string };
+    const o = JSON.parse(raw) as { v?: number; n?: number; p?: string; c?: string; g?: string };
     if (o.v !== 2 || o.n !== d.n || typeof o.p !== 'string' || typeof o.c !== 'string') return false;
     const pb = fromB64(o.p);
     const cb = fromB64(o.c);
     if (pb.length !== d.n * 6 || cb.length !== d.n * 3) return false;
+    // verniz veio depois: guardado antigo não tem, e fica sem verniz
+    const gb = typeof o.g === 'string' ? fromB64(o.g) : null;
+    if (gb && gb.length !== d.n) return false;
     const p = new Int16Array(pb.buffer, pb.byteOffset, d.n * 3);
     const rest = new Float32Array(d.n * 3);
     const ink = new Float32Array(d.n * 3);
+    const varnish = new Float32Array(d.n);
     for (let i = 0; i < rest.length; i++) {
       rest[i] = p[i] / Q;
       if (!Number.isFinite(rest[i])) return false;
       ink[i] = cb[i] / QI;
     }
-    d.restore({ rest, ink });
+    if (gb) for (let i = 0; i < d.n; i++) varnish[i] = gb[i] / 255;
+    d.restore({ rest, ink, varnish });
     d.snap();
     return true;
   } catch {
