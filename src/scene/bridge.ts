@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
 import type { Vec3 } from '../model/types';
+import { useStore } from '../state/store';
+import { anim } from './anim';
 
 /*
  * Ponte entre a cena 3D e a interface. A cena registra aqui as malhas e algumas funções;
@@ -15,14 +17,62 @@ export const bridge: {
   frame?: (kind: FrameKind) => void;
   photo?: () => string | null;
   helper?: THREE.Object3D;
+  /** direção "para a direita" de quem olha a tela */
+  camRight?: () => THREE.Vector3;
 } = {};
+
+/**
+ * Roda `fn` com as peças animadas de volta ao lugar de verdade, para que medidas,
+ * empilhar, enquadrar e exportar não vejam o quique. O próximo quadro reaplica a animação.
+ */
+export function atRest<T>(fn: () => T): T {
+  const ids = anim.ids();
+  if (ids.length) {
+    const pieces = useStore.getState().doc.pieces;
+    for (const id of ids) {
+      const m = meshes.get(id);
+      const p = pieces.find(x => x.id === id);
+      if (!m || !p) continue;
+      m.position.set(p.pos[0], p.pos[1], p.pos[2]);
+      m.scale.setScalar(p.scale);
+      m.updateMatrixWorld(true);
+    }
+  }
+  return fn();
+}
 
 export function worldBox(id: string): THREE.Box3 | null {
   const m = meshes.get(id);
   if (!m || !m.visible) return null;
-  m.updateMatrixWorld(true);
-  const b = new THREE.Box3().setFromObject(m, true);
-  return b.isEmpty() ? null : b;
+  return atRest(() => {
+    m.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(m, true);
+    return b.isEmpty() ? null : b;
+  });
+}
+
+/**
+ * Meio (no eixo `k`) da peça em que esta está grudada: a maior que encosta nela.
+ * Sem nenhuma encostando, o meio da mesa.
+ */
+export function hostCenter(id: string, k: 0 | 2): number {
+  const me = worldBox(id);
+  if (!me) return 0;
+  me.expandByScalar(0.05);
+  let best = -1;
+  let c = 0;
+  for (const mid of meshes.keys()) {
+    if (mid === id) continue;
+    const b = worldBox(mid);
+    if (!b || !b.intersectsBox(me)) continue;
+    const s = b.getSize(new THREE.Vector3());
+    const vol = s.x * s.y * s.z;
+    if (vol > best) {
+      best = vol;
+      c = (b.min.getComponent(k) + b.max.getComponent(k)) / 2;
+    }
+  }
+  return Math.round(c * 1000) / 1000;
 }
 
 /** Ponto em cima do centro da peça, para a próxima peça nascer apoiada nela. */
@@ -37,13 +87,15 @@ export function topOf(id: string | null): Vec3 | undefined {
 /** STL em milímetros, com as peças visíveis. Serve para impressão 3D ou para conferir medidas. */
 export function exportSTL(): Blob | null {
   const root = new THREE.Group();
-  meshes.forEach(m => {
-    if (!m.visible) return;
-    m.updateMatrixWorld(true);
-    const g = m.geometry.clone();
-    g.applyMatrix4(m.matrixWorld);
-    root.add(new THREE.Mesh(g));
-  });
+  atRest(() =>
+    meshes.forEach(m => {
+      if (!m.visible) return;
+      m.updateMatrixWorld(true);
+      const g = m.geometry.clone();
+      g.applyMatrix4(m.matrixWorld);
+      root.add(new THREE.Mesh(g));
+    }),
+  );
   if (!root.children.length) return null;
   root.scale.setScalar(10);
   root.updateMatrixWorld(true);

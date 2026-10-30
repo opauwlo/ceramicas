@@ -92,3 +92,35 @@ describe('peças', () => {
     expect(st().selectedId).toBeNull();
   });
 });
+
+describe('mãos', () => {
+  it('espelha a peça para o outro lado num passo só', () => {
+    const id = st().addPiece('gota', [1.5, 0.2, 0], [0, 0, -60]);
+    const before = st().past.length;
+    const par = st().mirror(id, 'x', 0);
+    const pc = st().doc.pieces.find(p => p.id === par);
+    expect(pc?.pos).toEqual([-1.5, 0.2, 0]);
+    expect(pc?.rot).toEqual([0, 0, 60]);
+    expect(pc?.name).toContain('par');
+    expect(st().selectedId).toBe(par);
+    expect(st().past.length).toBe(before + 1);
+    st().undo();
+    expect(st().doc.pieces.some(p => p.id === par)).toBe(false);
+  });
+
+  it('peça nova nasce no lugar e no giro pedidos', () => {
+    const id = st().addPiece('cone', [0.5, 1, 0], [0, 0, 90]);
+    const pc = st().doc.pieces.find(p => p.id === id);
+    expect(pc?.pos).toEqual([0.5, 1, 0]);
+    expect(pc?.rot).toEqual([0, 0, 90]);
+  });
+
+  it('guarda a cor do pincel e a peça esperando para grudar', () => {
+    st().setBrush('#123456');
+    st().setPlacing('anel');
+    expect(st().brush).toBe('#123456');
+    expect(st().placing).toBe('anel');
+    st().setPlacing(null);
+    expect(st().placing).toBeNull();
+  });
+});

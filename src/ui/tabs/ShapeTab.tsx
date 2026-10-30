@@ -1,9 +1,80 @@
-import { SPEC } from '../../model/spec';
+import { grams } from '../../lib/format';
+import { buzz } from '../../lib/haptics';
+import { canSmooth, clampPress, press, smooth } from '../../model/hands';
+import { DENSITY, isClay, SPEC } from '../../model/spec';
 import type { Piece } from '../../model/types';
-import { useStore } from '../../state/store';
+import { anim } from '../../scene/anim';
+import { useMetrics, useStore } from '../../state/store';
 import { rotateSelected, sitSelected } from '../actions';
 import { Section, Slider, TextField } from '../controls';
+import { Icon } from '../icons';
 import { NoSelection } from './NoSelection';
+
+/** Um aperto ou um puxão pelos botões: o mesmo que o gesto na mesa, em passos. */
+const SQUEEZE = 0.85;
+
+/** Amassar, esticar e alisar por botão, para quem prefere tocar a arrastar. */
+function HandsSection({ piece }: { piece: Piece }) {
+  const m = useMetrics(s => s.m[piece.id]);
+  const act = (fn: (p: Piece) => void) => {
+    const s = useStore.getState();
+    s.patchPiece(piece.id, fn);
+    s.commit();
+    anim.play(piece.id, 'boop', { amp: 0.6 });
+    buzz(6);
+  };
+  const canPress = clampPress(piece, SQUEEZE) < 0.999;
+  const canPull = clampPress(piece, 1 / SQUEEZE) > 1.001;
+  const peso = m && isClay(piece) ? ` (${grams(m.vol * DENSITY)})` : '';
+  return (
+    <Section title="Com as mãos">
+      <div className="hands">
+        <button
+          type="button"
+          className="btn"
+          disabled={!canPress}
+          onClick={() =>
+            act(p => {
+              p.p = press(piece, SQUEEZE);
+            })
+          }
+        >
+          <Icon.press />
+          Amassar
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!canPull}
+          onClick={() =>
+            act(p => {
+              p.p = press(piece, 1 / SQUEEZE);
+            })
+          }
+        >
+          <Icon.stretch />
+          Esticar
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!canSmooth(piece)}
+          onClick={() =>
+            act(p => {
+              const r = smooth(piece, 0.6);
+              p.p = r.p;
+              p.clay = r.clay;
+            })
+          }
+        >
+          <Icon.smooth />
+          Alisar
+        </button>
+      </div>
+      <p className="hint">Amassar e esticar mudam o formato, não a quantidade de massa{peso}. Na mesa, escolha uma mão no canto e faça com o dedo.</p>
+    </Section>
+  );
+}
 
 export function ShapeTab() {
   const piece = useStore(s => s.doc.pieces.find(p => p.id === s.selectedId));
@@ -34,6 +105,8 @@ function ShapeEditor({ piece }: { piece: Piece }) {
         />
         <span className="tag">{sp.label}</span>
       </div>
+
+      <HandsSection piece={piece} />
 
       <Section title="Forma">
         {sp.params.map(q => (

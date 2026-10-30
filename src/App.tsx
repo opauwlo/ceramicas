@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
+import { ClayScreen } from './clay/ClayScreen';
 import { Viewport } from './scene/Viewport';
 import { useStore } from './state/store';
-import { InfoChips, PhotoDialog, QuickBar, ToastView, TopBar } from './ui/Overlay';
+import { InfoChips, PaintBar, PhotoDialog, PlaceBanner, QuickBar, ToastView, ToolBelt, TopBar } from './ui/Overlay';
 import { Panel } from './ui/Panel';
 
 function useShortcuts() {
@@ -10,6 +11,7 @@ function useShortcuts() {
       const s = useStore.getState();
       if (e.key === 'Escape') {
         if (s.photo) s.setPhoto(null);
+        else if (s.placing) s.setPlacing(null);
         else s.select(null);
         return;
       }
@@ -34,6 +36,12 @@ function useShortcuts() {
 }
 
 export default function App() {
+  const mode = useStore(s => s.mode);
+  return mode === 'massa' ? <ClayScreen /> : <Atelie />;
+}
+
+/** Montar com peças prontas: o ateliê de antes. */
+function Atelie() {
   const panel = useStore(s => s.panel);
   useShortcuts();
   return (
@@ -41,8 +49,11 @@ export default function App() {
       <TopBar />
       <main className="view">
         <Viewport />
+        <ToolBelt />
         <QuickBar />
         <InfoChips />
+        <PaintBar />
+        <PlaceBanner />
         <ToastView />
       </main>
       <Panel />

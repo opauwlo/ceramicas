@@ -1,6 +1,8 @@
 import { dataUrlToBlob, downloadBlob, slug, stamp } from '../lib/download';
 import { wrapAngle } from '../lib/format';
-import { bridge, exportSTL, worldBox } from '../scene/bridge';
+import { buzz } from '../lib/haptics';
+import type { MirrorAxis } from '../model/mirror';
+import { bridge, exportSTL, hostCenter, worldBox } from '../scene/bridge';
 import { useStore } from '../state/store';
 import type { Doc } from '../model/types';
 
@@ -54,6 +56,27 @@ export function rotateSelected(deg: number) {
     p.rot[1] = wrapAngle(Math.round(p.rot[1] + deg));
   });
   s.commit();
+}
+
+/**
+ * Cria o par da peça do outro lado: esquerda e direita como aparece na tela.
+ * O espelho passa pelo meio da peça em que ela está grudada (o corpo da mariposa, por exemplo).
+ */
+export function mirrorSelected() {
+  const s = useStore.getState();
+  const pc = s.doc.pieces.find(p => p.id === s.selectedId);
+  if (!pc) return;
+  const right = bridge.camRight?.();
+  const axis: MirrorAxis = !right || Math.abs(right.x) >= Math.abs(right.z) ? 'x' : 'z';
+  const k = axis === 'x' ? 0 : 2;
+  const c = hostCenter(pc.id, k);
+  if (Math.abs(pc.pos[k] - c) < 0.05) {
+    s.notify('Essa peça está bem no meio. Arraste para um lado e espelhe de novo.');
+    return;
+  }
+  s.mirror(pc.id, axis, c);
+  buzz(10);
+  s.notify('Espelhou! O par está do outro lado.');
 }
 
 /** Desce ou sobe a peça até a parte de baixo encostar na mesa. */

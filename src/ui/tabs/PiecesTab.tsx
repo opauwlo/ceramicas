@@ -1,6 +1,5 @@
 import { dims, grams } from '../../lib/format';
 import { DENSITY, isClay, PIECE_TYPES, SPEC } from '../../model/spec';
-import { topOf } from '../../scene/bridge';
 import { useMetrics, useStore } from '../../state/store';
 import { Section } from '../controls';
 import { Icon, ShapeIcon } from '../icons';
@@ -9,12 +8,14 @@ import type { PieceType } from '../../model/types';
 export function PiecesTab() {
   const pieces = useStore(s => s.doc.pieces);
   const sel = useStore(s => s.selectedId);
+  const placing = useStore(s => s.placing);
   const metrics = useMetrics(s => s.m);
 
+  // escolhe a peça e espera um toque na mesa: ela gruda onde o dedo tocar
   const add = (t: PieceType) => {
     const s = useStore.getState();
-    s.addPiece(t, topOf(s.selectedId));
-    s.notify(`${SPEC[t].label} na mesa`);
+    s.setPlacing(t);
+    if (s.panel === 'max') s.setPanel('mid');
   };
 
   return (
@@ -22,13 +23,13 @@ export function PiecesTab() {
       <Section title="Adicionar peça">
         <div className="addgrid">
           {PIECE_TYPES.map(t => (
-            <button key={t} type="button" className="add" onClick={() => add(t)}>
-              <ShapeIcon type={t} />
+            <button key={t} type="button" className="add" aria-pressed={placing === t} onClick={() => add(t)}>
+              <ShapeIcon type={t} fill={SPEC[t].color} face />
               <span>{SPEC[t].label}</span>
             </button>
           ))}
         </div>
-        <p className="hint">{sel ? 'A peça nova entra em cima da peça selecionada.' : 'Com uma peça selecionada, a nova entra em cima dela.'} Arraste qualquer peça na mesa para mudar de lugar.</p>
+        <p className="hint">Escolha uma peça e toque na mesa ou em outra peça: ela gruda ali, virada para fora. Arrastando com a mão Mover, ela gruda onde o dedo passar.</p>
       </Section>
 
       <Section title="Na mesa" extra={<span className="count">{pieces.length}</span>}>
